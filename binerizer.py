@@ -5,19 +5,23 @@ import pandas as pd
 Helper functions to binerize data columns
 '''
 
-def binNumeric(data, column, quantiles = 10):
+def binNumeric(data, column, quantiles = 10, drop_first = False):
     '''
     Bins numeric columns by quantile (optional parameter)
     Returns: Pandas dataframe with one column per bin
     '''
-    return pd.get_dummies(pd.qcut(data[column].values, quantiles, duplicates = 'drop'), prefix = column)
+    boolNum = pd.get_dummies(pd.qcut(data[column].values, quantiles, duplicates = 'drop'), 
+                          prefix = column, 
+                          drop_first = drop_first).astype(np.bool_)
+    return pd.concat([boolNum, ~boolNum], axis = 1)
     
-def binCategorical(data, column):
+def binCategorical(data, column, drop_first = False):
     '''
     Creates one hot encoding for categorical variables
     Returns: Pandas dataframe with one column per bin
     '''
-    return pd.get_dummies(data[column], prefix = column)
+    boolCat = pd.get_dummies(data[column], prefix = column, drop_first = drop_first).astype(np.bool_)
+    return pd.concat([boolCat, ~boolCat], axis = 1)
     
 def threshNumeric(data, column, quant = 10):
     '''
@@ -31,7 +35,7 @@ def threshNumeric(data, column, quant = 10):
     binarized = pd.DataFrame(np.concatenate((lowThresh, highThresh), axis = 1))
     binarized.columns = [column+'_'+str(round(x,2))+'*' for x in quantiles] + [column+'_'+str(round(x,2))+'_' for x in quantiles]
 
-    return binarized
+    return binarized.astype(np.bool_)
 
 def binerizeData(data, binNumeric = False, quantiles = 10, verbose = False):
     '''
