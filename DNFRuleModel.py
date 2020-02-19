@@ -49,10 +49,27 @@ class DNFRuleModel(RuleModel):
         
         return c
     
+    def predict(self, X, rules):
+        
+        if len(rules) == 0 or len(X) == 0:
+            raise Exception('Need at least one rule and one data sample!')
+        
+        K = []
+        for rule in rules:
+            K.append(np.all(self.X[:,rule.astype(np.bool_)], axis=1))
+        
+        return np.sum(K, axis = 0) > 0
+    
     def getNewRules(self, rules):
         '''
         Function to unique DNF rules
         '''
+        
+        if len(rules) == 0:
+            return rules
+        else:
+            rules = np.unique(rules, axis = 0)
+            
         #If there are no rules, every rule is new
         if self.rules is None:
             return rules

@@ -42,6 +42,13 @@ class RuleModel(object):
         '''
         pass
     
+    def predict(self, X, rules):
+        '''
+        Makes class label predictions given data samples and a set of rules
+        - Needs to be specified in the child class
+        '''
+        pass
+    
     def addRule(self, rules):
         '''
         General function for taking new rules and computing coefficients
