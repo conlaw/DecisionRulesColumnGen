@@ -5,6 +5,9 @@ from gurobipy import GRB
 from DNFRuleModel import DNFRuleModel
 from MasterModel import MasterModel
 from DNF_IP_RuleGenerator import DNF_IP_RuleGenerator
+from GreedyHeuristic import GreedyHeuristic
+import time
+from GeneralRuleGenerator import GeneralRuleGenerator
 
 class Classifier(object):
     '''
@@ -12,6 +15,7 @@ class Classifier(object):
     '''
     
     def __init__(self, X, Y,
+                 args = {},
                  ruleModel = 'DNF',
                  ruleGenerator = 'DNF_IP'):
         
@@ -20,13 +24,18 @@ class Classifier(object):
         self.ruleGen = None
         self.master = None
         self.fitRuleSet = None
+        self.numIter = 0
+        self.args = args
+        self.mip_results = []
+        self.final_mip = 0
+        self.final_ip = 0
         
         # Map parameters to instantiated objects
         self.initRuleModel(X, Y, ruleModel)
         self.initRuleGenerator(ruleGenerator)
-        self.master = MasterModel(self.ruleMod)
+        self.master = MasterModel(self.ruleMod, self.args)
         
-    def fit(self, initial_rules = None, verbose = False):
+    def fit(self, initial_rules = None, verbose = False, timeLimit = None, timeLimitPricing = None):
         '''
         Function to generate a rule set
             - Can take initial set of rules
@@ -35,15 +44,22 @@ class Classifier(object):
         
         # Add initial rules to master model
         if initial_rules is not None:
-            self.master.addRules(initial_rules)
+            self.master.addRule(initial_rules)
+        
+        if timeLimit is not None:
+            start_time = time.perf_counter() 
         
         while True:
-            
+            self.numIter += 1
             # Solve relaxed version of restricted problem
             if verbose:
                 print('Solving Restricted LP')
             results = self.master.solve(verbose = verbose, relax = True)
             results['verbose'] = verbose
+            self.mip_results.append(results['obj'])
+            
+            if timeLimitPricing is not None:
+                results['timeLimit'] = timeLimitPricing
             
             # Generate new candidate rules
             if verbose:
@@ -60,13 +76,21 @@ class Classifier(object):
                 if verbose:
                     print('No new rules generated.')
                 break
+            
+            if timeLimit is not None: 
+                if time.perf_counter() - start_time > timeLimit:
+                    print('Time limit for column generation exceeded. Solving MIP.')
+                    break
         
         # Solve master problem to optimality
         if verbose:
             print('Solving final master problem to integer optimality')
+        
         results = self.master.solve(verbose = verbose, relax = False)
         
         self.fitRuleSet = results['ruleSet']
+        self.final_mip = self.mip_results[-1]
+        self.final_ip = results['obj']
         
         #Return final rules
         return self
@@ -98,7 +122,11 @@ class Classifier(object):
         '''
 
         if ruleGenerator == 'DNF_IP':
-            self.ruleGen = DNF_IP_RuleGenerator(self.ruleMod)
+            self.ruleGen = DNF_IP_RuleGenerator(self.ruleMod, self.args)
+        elif ruleGenerator == 'Greedy':
+            self.ruleGen = GreedyHeuristic(self.ruleMod, self.args)
+        elif ruleGenerator == 'Generic':
+            self.ruleGen = GeneralRuleGenerator(self.ruleMod, self.args)
         else:
             raise Exception('No associated rule generator found.')
         

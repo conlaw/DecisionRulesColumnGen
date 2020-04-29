@@ -76,7 +76,7 @@ class DNF_IP_RuleGenerator2(RuleGenerator):
         self.model.optimize()
         
         #Only return rules with negative reduced costs
-        if self.model.objVal < 0:
+        if self.model.objVal < -1*lam:
             if verbose:
                 for v in self.model.getVars():
                     print('%s %g' % (v.varName, v.x))

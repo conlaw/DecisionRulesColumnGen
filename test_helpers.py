@@ -22,7 +22,7 @@ def run_test(args, verbose = False):
         print('No data file path provided. Exiting.')
         return
     
-    fixedModelParams = args['fixedModelParams'] if 'fixedModelParams' in args else {}
+    fixedModelParams = args['fixed_model_params'] if 'fixed_model_params' in args else {}
     price_limit = args['price_limit'] if 'price_limit' in args else 999999999
     train_limit = args['train_limit'] if 'train_limit' in args else 999999999
     num_splits = args['num_splits'] if 'num_splits' in args else 2
@@ -42,7 +42,10 @@ def run_test(args, verbose = False):
     #Prepare results dict
     results = {}
     
-    accuracies = []    
+    accuracies = []
+    mip = []
+    mip_final = []
+    ip = []
     complexities = []
     times = []
     overall_num_iter = []
@@ -80,6 +83,11 @@ def run_test(args, verbose = False):
                 hp_times = []
                 hp_num_iter = []
                 hp_num_cols_gen = []
+                hp_mip = []
+                hp_mip_final = []
+                hp_ip = []
+
+                hp_rules = None
                 
                 for j in range(num_splits_hp):
                     print('Split %d'%j)
@@ -93,7 +101,8 @@ def run_test(args, verbose = False):
                     classif = Classifier(X_hp_train, Y_hp_train, fixedModelParams, ruleGenerator = 'Generic')
                     
                     start_time = time.perf_counter() 
-                    classif.fit(verbose = False, 
+                    classif.fit(initial_rules = hp_rules,
+                                verbose = False, 
                                 timeLimit = train_limit, 
                                 timeLimitPricing = price_limit)
                     time_to_exec = time.perf_counter() - start_time
@@ -113,6 +122,10 @@ def run_test(args, verbose = False):
                     num_cols_gen = len(classif.ruleMod.rules)
                     hp_num_cols_gen.append(num_cols_gen)
                     
+                    hp_mip.append(classif.mip_results)
+                    hp_mip_final.append(classif.final_mip)
+                    hp_ip.append(classif.final_ip)
+
                     print('Results: (Acc) %.3f (Time) %.0f (Complex) %.0f (Cols Gen) %.0f  (Num Iter) %.0f'%(acc, time_to_exec, complexity, num_cols_gen, num_iter))
 
                     #Save any rules generated to use in final column gen prediction process
@@ -121,6 +134,11 @@ def run_test(args, verbose = False):
                         saved_rules = rules
                     else:
                         saved_rules = np.unique(np.concatenate([saved_rules,rules]), axis = 0)
+                        
+                    if hp_rules is None:
+                        hp_rules = rules
+                    else:
+                        hp_rules = np.unique(np.concatenate([hp_rules,rules]), axis = 0)
                 
                 res['mean_accuracy'] = np.mean(hp_accuracies)
                 res['sd_accuracy'] = np.std(hp_accuracies)
@@ -141,6 +159,16 @@ def run_test(args, verbose = False):
                 res['mean_iter'] = np.mean(hp_num_iter)
                 res['sd_iter'] = np.std(hp_num_iter)
                 res['iter'] = hp_num_iter
+                
+                res['mean_final_mip'] = np.mean(hp_mip_final)
+                res['sd_final_mip'] = np.std(hp_mip_final)
+                res['final_mip'] = hp_mip_final
+                
+                res['mean_ip'] = np.mean(hp_ip)
+                res['sd_ip'] = np.std(hp_ip)
+                res['ip'] = hp_ip
+                
+                res['mip'] = hp_mip
 
                 print('HP Results: (Acc) %.3f (Time) %.0f (Complex) %.0f (Cols Gen) %.0f  (Num Iter) %.0f'%(np.mean(hp_accuracies), 
                                                                                                             np.mean(hp_times), 
@@ -182,6 +210,10 @@ def run_test(args, verbose = False):
         total_rule = len(classif.ruleMod.rules)
         total_rules.append(total_rule)
         
+        mip.append(classif.mip_results)
+        mip_final.append(classif.final_mip)
+        ip.append(classif.final_ip)
+
         print('Overall Fold Results: (Acc) %.3f (Time) %.0f (Complex) %.0f (Cols Gen) %.0f  (Num Iter) %.0f (Total rules) %.0f'%(acc, 
                                                                                                             time_to_exec, 
                                                                                                             complexity, 
@@ -214,7 +246,16 @@ def run_test(args, verbose = False):
     results['mean_total_rules'] = np.mean(total_rules)
     results['sd_total_rules'] = np.std(total_rules)
     results['total_rules'] = total_rules
-
+    
+    results['mean_final_mip'] = np.mean(mip_final)
+    results['sd_final_mip'] = np.std(mip_final)
+    results['final_mip'] = mip_final
+                
+    results['mean_ip'] = np.mean(ip)
+    results['sd_ip'] = np.std(ip)
+    results['ip'] = ip
+                
+    results['mip'] = mip
     
     print('Final Results: (Acc) %.3f (Time) %.0f (Complex) %.0f (Cols Gen) %.0f  (Num Iter) %.0f (Total rules) %.0f'%(np.mean(accuracies), 
                                                                                                             np.mean(times), 

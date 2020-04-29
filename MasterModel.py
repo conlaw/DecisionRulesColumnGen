@@ -8,10 +8,10 @@ class MasterModel(object):
     Object to contain and run the restricted model
     '''
     
-    def __init__(self, rule_mod, complexity = 40):
+    def __init__(self, rule_mod, args = {}):
         #Set-up constants
         self.ruleModel = rule_mod
-        self.complexityConstraint = complexity
+        self.complexityConstraint = args['ruleComplexity'] if 'ruleComplexity' in args else 40
         self.w = {}
         self.var_counter = 0
         self.model_count = 0
@@ -66,6 +66,7 @@ class MasterModel(object):
         #Construct results dictionary
         results = {}
         results['model'] = self.finalMod
+        results['obj'] = self.finalMod.objVal
         results['ruleSet'] = self.getRuleSet(self.finalMod.getVars())
 
         if relax:

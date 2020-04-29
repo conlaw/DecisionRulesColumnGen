@@ -39,7 +39,7 @@ class DNFRuleModel(RuleModel):
         #The complexity of a rule is just the number of features it includes
         c = []
         for rule in rules:
-            c.append(sum(rule))
+            c.append(sum(rule)+1)
         c = np.array(c)
         
         if self.C is None:
@@ -56,7 +56,7 @@ class DNFRuleModel(RuleModel):
         
         K = []
         for rule in rules:
-            K.append(np.all(self.X[:,rule.astype(np.bool_)], axis=1))
+            K.append(np.all(X[:,rule.astype(np.bool_)], axis=1))
         
         return np.sum(K, axis = 0) > 0
     

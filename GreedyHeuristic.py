@@ -70,7 +70,7 @@ class GreedyHeuristic(RuleGenerator):
             
     def computeObj(self, features, lam, mu):
         classPos = np.all(self.ruleMod.X[:,features],axis=1)
-        return lam*len(features) - np.dot(classPos[self.ruleMod.Y],mu) + sum(classPos[~self.ruleMod.Y])
+        return lam*(1+len(features)) - np.dot(classPos[self.ruleMod.Y],mu) + sum(classPos[~self.ruleMod.Y])
 
 
         
