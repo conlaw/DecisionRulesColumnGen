@@ -25,8 +25,8 @@ def run_test(args, verbose = False):
     fixedModelParams = args['fixed_model_params'] if 'fixed_model_params' in args else {}
     price_limit = args['price_limit'] if 'price_limit' in args else 999999999
     train_limit = args['train_limit'] if 'train_limit' in args else 999999999
-    num_splits = args['num_splits'] if 'num_splits' in args else 2
-    num_splits_hp = args['num_splits_hp'] if 'num_splits_hp' in args else 2
+    num_splits = args['num_splits'] if 'num_splits' in args else 10
+    num_splits_hp = args['num_splits_hp'] if 'num_splits_hp' in args else 5
     test_name = args['test_name'] if 'test_name' in args else args['data']
     
     #Read and prepare data
