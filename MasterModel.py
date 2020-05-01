@@ -8,9 +8,10 @@ class MasterModel(object):
     Object to contain and run the restricted model
     '''
     
-    def __init__(self, rule_mod, args = {}):
+    def __init__(self, rule_mod, fairnessModule, args = {}):
         #Set-up constants
         self.ruleModel = rule_mod
+        self.fairnessModule = fairnessModule
         self.complexityConstraint = args['ruleComplexity'] if 'ruleComplexity' in args else 40
         self.w = {}
         self.var_counter = 0
@@ -26,9 +27,9 @@ class MasterModel(object):
         '''
         
         #Initialize positive misclassification variables
-        self.x = {}
+        self.x = []
         for k in range(sum(self.ruleModel.Y)):
-            self.x[k] = self.model.addVar(obj=1, vtype=GRB.BINARY, name="eps[%d]"%k)
+            self.x.append(self.model.addVar(obj=1, vtype=GRB.BINARY, name="eps[%d]"%k))
 
         #Add positive misclassification constraints
         self.misClassConst = []
@@ -37,7 +38,9 @@ class MasterModel(object):
  
         #Add complexity constraint
         self.compConst = self.model.addConstr( 0*self.x[0] <= self.complexityConstraint, name = 'compConst')
-
+        
+        self.fairnessConstraints = self.fairnessModule.createFairnessConstraint(self.model, self.x, self.ruleModel.Y)
+        self.model.write("fair.lp")
     
     def solve(self, relax = True, verbose = False, saveModel = False):
         '''
@@ -77,11 +80,14 @@ class MasterModel(object):
             for c in self.finalMod.getConstrs():
                 if c.ConstrName == 'compConst':
                     lam = c.Pi
+                elif c.ConstrName in self.fairnessModule.fairConstNames:
+                    self.fairnessModule.extractDualVariables(c)
                 else:
                     mu.append(c.Pi)
             
             results['mu'] = mu
             results['lam'] = lam
+            results['fairDuals'] = self.fairnessModule.fairDuals
 
         
         return results

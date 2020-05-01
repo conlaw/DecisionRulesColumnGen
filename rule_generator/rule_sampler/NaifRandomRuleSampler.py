@@ -1,6 +1,6 @@
 from scipy.stats import bernoulli
 import numpy as np
-from RuleSampler import RuleSampler
+from .RuleSampler import RuleSampler
 
 class NaifRandomRuleSampler(RuleSampler):
     

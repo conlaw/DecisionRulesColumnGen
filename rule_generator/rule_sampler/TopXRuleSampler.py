@@ -1,12 +1,11 @@
 from scipy.stats import bernoulli
 import numpy as np
-from RuleSampler import RuleSampler
+from .RuleSampler import RuleSampler
 
 class TopXRuleSampler(RuleSampler):
     
     def __init__(self, args = {}):
         self.numRulesToReturn = args['numRulesToReturn'] if 'numRulesToReturn' in args else 100
-        print("hey your config said to return this many rules: ", self.numRulesToReturn)
     
     def getRules(self, rules, reduced_costs, col_samples):
         sorted_rc = np.argsort(reduced_costs)

@@ -12,7 +12,7 @@ class RuleGenerator(object):
         - Specify how to generate a rule (taking in various arguments)
     '''
     
-    def __init__(self, ruleMod, args = {}):
+    def __init__(self, fairnessModule, args = {}):
         pass
         
     def generateRule(self, args = {}):

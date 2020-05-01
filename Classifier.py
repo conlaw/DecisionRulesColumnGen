@@ -2,12 +2,11 @@ import pandas as pd
 import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
+import time
 from DNFRuleModel import DNFRuleModel
 from MasterModel import MasterModel
-from DNF_IP_RuleGenerator import DNF_IP_RuleGenerator
-from GreedyHeuristic import GreedyHeuristic
-import time
-from GeneralRuleGenerator import GeneralRuleGenerator
+from rule_generator.GeneralRuleGenerator import GeneralRuleGenerator
+from fairness_modules import *
 
 class Classifier(object):
     '''
@@ -17,7 +16,8 @@ class Classifier(object):
     def __init__(self, X, Y,
                  args = {},
                  ruleModel = 'DNF',
-                 ruleGenerator = 'DNF_IP'):
+                 ruleGenerator = 'Generic',
+                 fairness_module = 'EqOfOp'):
         
         #Define class variables
         self.ruleMod = None
@@ -31,9 +31,10 @@ class Classifier(object):
         self.final_ip = 0
         
         # Map parameters to instantiated objects
+        self.initFairnessModule(fairness_module)
         self.initRuleModel(X, Y, ruleModel)
         self.initRuleGenerator(ruleGenerator)
-        self.master = MasterModel(self.ruleMod, self.args)
+        self.master = MasterModel(self.ruleMod, self.fairnessModule, self.args)
         
     def fit(self, initial_rules = None, verbose = False, timeLimit = None, timeLimitPricing = None):
         '''
@@ -70,7 +71,6 @@ class Classifier(object):
             if ruleFlag:
                 if verbose:
                     print('Adding %d new rule(s)'%len(rules))
-                    
                 self.master.addRule(rules)
             else:
                 if verbose:
@@ -102,6 +102,9 @@ class Classifier(object):
         if self.fitRuleSet is None:
             raise Exception("Model not fit. Can't make inference!")
         
+        if len(self.fitRuleSet) == 0:
+            return np.repeat(sum(self.ruleMod.Y) >= len(self.ruleMod.Y)/2, X.shape[0])
+        
         return self.ruleMod.predict(X, self.fitRuleSet)
         
     def initRuleModel(self, X, Y, ruleModel):
@@ -121,12 +124,20 @@ class Classifier(object):
            - To add a new rule generator simply add the object to the if control flow
         '''
 
-        if ruleGenerator == 'DNF_IP':
-            self.ruleGen = DNF_IP_RuleGenerator(self.ruleMod, self.args)
-        elif ruleGenerator == 'Greedy':
-            self.ruleGen = GreedyHeuristic(self.ruleMod, self.args)
-        elif ruleGenerator == 'Generic':
-            self.ruleGen = GeneralRuleGenerator(self.ruleMod, self.args)
+        if ruleGenerator == 'Generic':
+            self.ruleGen = GeneralRuleGenerator(self.ruleMod, self.fairnessModule, self.args)
         else:
             raise Exception('No associated rule generator found.')
-        
+            
+    def initFairnessModule(self, fairnessModule):
+        '''
+        Function that maps string fairness modules to objects
+           - To add a new fairness module simply add the object to the if control flow
+        '''
+        if fairnessModule == 'unfair':
+            self.fairnessModule = NoFair.NoFair(self.args)
+        elif fairnessModule == 'EqOfOp':
+            self.fairnessModule = EqualityOfOpportunity.EqualityOfOpportunity(self.args)
+        else:
+            raise Exception('No associated fairness module found.')
+

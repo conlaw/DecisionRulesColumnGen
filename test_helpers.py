@@ -2,8 +2,6 @@ import numpy as np
 import pandas as pd
 from binerizer import *
 from DNFRuleModel import DNFRuleModel
-from MasterModel import MasterModel
-from RuleGenerator import RuleGenerator
 from Classifier import Classifier
 from sklearn.model_selection import train_test_split
 import random
@@ -28,6 +26,7 @@ def run_test(args, verbose = False):
     num_splits = args['num_splits'] if 'num_splits' in args else 10
     num_splits_hp = args['num_splits_hp'] if 'num_splits_hp' in args else 5
     test_name = args['test_name'] if 'test_name' in args else args['data']
+    group_col_name = args['groupCol'] 
     
     #Read and prepare data
     print('Reading in data')
@@ -35,9 +34,14 @@ def run_test(args, verbose = False):
     data = pd.read_csv(args['data'])
     data = binerizeData(data, verbose = verbose)
     data = data.sample(frac=1).reset_index(drop=True)
+    
+    cols = data.columns
+    print(cols, group_col_name)
+    group_index = [i for i in range(len(cols)) if cols[i] == group_col_name][0]
 
     data_X = data.to_numpy()[:,0:(data.shape[1]-1)]
     data_Y = data.to_numpy()[:,data.shape[1]-1]
+    group = data.to_numpy()[:,group_index]
 
     #Prepare results dict
     results = {}
@@ -61,6 +65,7 @@ def run_test(args, verbose = False):
         #Get data for this fold
         X_train = np.delete(data_X, np.arange(break_points[i], break_points[i+1]), axis=0)
         Y_train = np.delete(data_Y, np.arange(break_points[i], break_points[i+1]))
+        g_train = np.delete(group, np.arange(break_points[i], break_points[i+1]))
 
         X_test = data_X[np.arange(break_points[i], break_points[i+1]),:]
         Y_test = data_Y[np.arange(break_points[i], break_points[i+1])]
@@ -93,7 +98,8 @@ def run_test(args, verbose = False):
                     print('Split %d'%j)
                     X_hp_train = np.delete(X_train, np.arange(break_points_hp[j], break_points_hp[j+1]), axis = 0)
                     Y_hp_train = np.delete(Y_train, np.arange(break_points_hp[j], break_points_hp[j+1]))
-
+                    fixedModelParams['group'] = np.delete(g_train, np.arange(break_points_hp[j], break_points_hp[j+1]))
+                    
                     X_hp_test = X_train[np.arange(break_points_hp[j], break_points_hp[j+1]),:]
                     Y_hp_test = Y_train[np.arange(break_points_hp[j], break_points_hp[j+1])]
                     
@@ -182,7 +188,8 @@ def run_test(args, verbose = False):
             fixedModelParams[hp] = optimal_param_value
             
         print('Running final model with parameters: '+ str(fixedModelParams))
-            
+        
+        fixedModelParams['group'] = g_train
         classif = Classifier(X_train, Y_train, fixedModelParams, ruleGenerator = 'Generic')
                     
         start_time = time.perf_counter() 

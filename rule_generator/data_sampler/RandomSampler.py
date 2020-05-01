@@ -1,6 +1,6 @@
 from scipy.stats import bernoulli
 import numpy as np
-from SubSampler import SubSampler
+from .SubSampler import SubSampler
 
 class RandomSampler(SubSampler):
     
@@ -29,4 +29,4 @@ class RandomSampler(SubSampler):
             col_samples = bernoulli.rvs(col_perc, size=X.shape[1]).astype(np.bool)
             X_sample = X_sample[:, col_samples]
         
-        return X_sample, Y_sample, mu_sample, col_samples      
+        return X_sample, Y_sample, mu_sample, row_samples, col_samples      

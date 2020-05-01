@@ -2,22 +2,16 @@ import pandas as pd
 import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
-from notsosubSampler import NotSoSubSampler
-from RandomSampler import RandomSampler
-from DNF_IP_RuleGenerator2 import DNF_IP_RuleGenerator2
-from GreedyRuleGenerator import GreedyRuleGenerator
-from FullRuleSampler import FullRuleSampler
-from TopXRuleSampler import TopXRuleSampler
-from NaifRandomRuleSampler import NaifRandomRuleSampler
-from SoftmaxRandomRuleSampler import SoftmaxRandomRuleSampler
-from RuleGenerator import RuleGenerator
+from .data_sampler import *
+from .generator import *
+from .rule_sampler import *
 
 class GeneralRuleGenerator(object):
     '''
     Object to create a binary classifier using column generation framework
     '''
     
-    def __init__(self, ruleMod,
+    def __init__(self, ruleMod, fairnessModule,
                  args = {},
                  sampler = 'random',
                  ruleGenerator = 'Greedy',
@@ -25,6 +19,7 @@ class GeneralRuleGenerator(object):
         
         self.args = args
         self.ruleMod = ruleMod
+        self.fairnessModule = fairnessModule
         
         ruleGenerator = args['ruleGenerator'] if 'ruleGenerator' in args else ruleGenerator
         print('Using %s'%ruleGenerator)
@@ -40,11 +35,8 @@ class GeneralRuleGenerator(object):
         if 'lam' not in args or 'mu' not in args:
             raise Exception('Required arguments not supplied for DNF IP Rule Generator.')
 
-        lam = args['lam']
-        mu = args['mu']
-        
-        X, Y, mu, col_samples = self.sampler.getSample(self.ruleMod.X, self.ruleMod.Y, mu)
-        rules, rcs = self.ruleGen.generateRule(X, Y, lam, mu, args)
+        X, Y, mu, args['row_samples'], col_samples = self.sampler.getSample(self.ruleMod.X, self.ruleMod.Y, args['mu'])
+        rules, rcs = self.ruleGen.generateRule(X, Y, args)
         final_rules, final_rcs = self.ruleSelect.getRules(rules, rcs, col_samples)
         
         return len(final_rules) > 0 , final_rules
@@ -58,9 +50,9 @@ class GeneralRuleGenerator(object):
         '''
         
         if sampler == 'full':
-            self.sampler = NotSoSubSampler()
+            self.sampler = notsosubSampler.NotSoSubSampler()
         elif sampler == 'random':
-            self.sampler = RandomSampler(self.args)
+            self.sampler = RandomSampler.RandomSampler(self.args)
         else:
             raise Exception('No associated rule model found.')
     
@@ -71,22 +63,22 @@ class GeneralRuleGenerator(object):
         '''
 
         if ruleGenerator == 'DNF_IP':
-            self.ruleGen = DNF_IP_RuleGenerator2(self.args)
+            self.ruleGen = DNF_IP_RuleGenerator.DNF_IP_RuleGenerator(self.fairnessModule, self.args)
         elif ruleGenerator == 'Greedy':
-            self.ruleGen = GreedyRuleGenerator(self.args)
+            self.ruleGen = GreedyRuleGenerator.GreedyRuleGenerator(self.fairnessModule, self.args)
         else:
             raise Exception('No associated rule generator found.')
             
     def initRuleSelect(self, ruleSelect):
         
         if ruleSelect == 'full':
-            self.ruleSelect = FullRuleSampler(self.args)
+            self.ruleSelect = FullRuleSampler.FullRuleSampler(self.args)
         elif ruleSelect == 'topX':
-            self.ruleSelect = TopXRuleSampler(self.args)
+            self.ruleSelect = TopXRuleSampler.TopXRuleSampler(self.args)
         elif ruleSelect == 'random':
-            self.ruleSelect = NaifRandomRuleSampler(self.args)
+            self.ruleSelect = NaifRandomRuleSampler.NaifRandomRuleSampler(self.args)
         elif ruleSelect == 'softmax':
-            self.ruleSelect = SoftmaxRandomRuleSampler(self.args)
+            self.ruleSelect = SoftmaxRandomRuleSampler.SoftmaxRandomRuleSampler(self.args)
         else:
             raise Exception('No associated rule selector found.')
 

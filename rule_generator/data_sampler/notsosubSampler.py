@@ -1,4 +1,4 @@
-from SubSampler import SubSampler
+from .SubSampler import SubSampler
 
 class NotSoSubSampler(SubSampler):
     
@@ -7,4 +7,4 @@ class NotSoSubSampler(SubSampler):
         Takes a set of rules and returns K_p, and K_z coefficient
         - Needs to be specified in the child class
         '''
-        return X, Y, mu          
+        return X, Y, mu, np.ones(X.shape[0]).atype(np.bool),  np.ones(X.shape[0]).atype(np.bool)      
