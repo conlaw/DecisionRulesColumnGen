@@ -25,20 +25,12 @@ class EqualityOfOpportunity(FairnessModule):
         '''
         if 'lam' not in args or 'mu' not in args or 'fairDuals' not in args or 'row_samples' not in args:
             raise Exception('Required arguments not supplied for NoFair Objective Definition.')
-        
-        if 'ubFair' not in args['fairDuals'] or 'lbFair' not in args['fairDuals']:
-            raise Exception('Required fairness dual variables not supplied for NoFair Objective Definition.')
-        
+                
         g = self.group[args['row_samples']]
-        coeff_g_1 = (args['fairDuals']['ubFair'] - args['fairDuals']['lbFair'])*1/sum(g & Y)
-        coeff_g_2 = (args['fairDuals']['lbFair'] - args['fairDuals']['ubFair'])*1/sum(~g & Y)
 
         objective = gp.LinExpr(np.ones(sum(~Y)), np.array(delta)[~Y]) #Y = False misclass term
         objective.add(gp.LinExpr(np.array(args['mu'])*-1, np.array(delta)[Y])) #Y = True misclass term
         objective.add(gp.LinExpr(args['lam']*np.ones(len(z)), z)) #Complexity term
-        objective.add(gp.LinExpr(coeff_g_1*np.ones(len(np.array(delta)[g & Y])), np.array(delta)[g & Y])) #1st fair term
-        objective.add(gp.LinExpr(coeff_g_2*np.ones(len(np.array(delta)[~g & Y])), np.array(delta)[~g & Y])) #2nd fair term
-
         return objective
   
     
@@ -48,15 +40,10 @@ class EqualityOfOpportunity(FairnessModule):
         '''
         if 'lam' not in args or 'mu' not in args or 'fairDuals' not in args or 'row_samples' not in args:
             raise Exception('Required arguments not supplied for NoFair Objective Computation.')
-        
-        if 'ubFair' not in args['fairDuals'] or 'lbFair' not in args['fairDuals']:
-            raise Exception('Required fairness dual variables not supplied for NoFair Objective Computation.')
-        
+                
         classPos = np.all(X[:,features],axis=1)
         g = self.group[args['row_samples']]
-        return args['lam']*(1+len(features)) - np.dot(classPos[Y],args['mu']) + sum(classPos[~Y]) + \
-               (args['fairDuals']['ubFair'] - args['fairDuals']['lbFair'])*(1/sum(g & Y) *sum(classPos[g & Y])) + \
-               (args['fairDuals']['lbFair'] - args['fairDuals']['ubFair'])*(1/sum(~g & Y) *sum(classPos[~g & Y])) 
+        return args['lam']*(1+len(features)) - np.dot(classPos[Y],args['mu']) + sum(classPos[~Y])
 
     
 

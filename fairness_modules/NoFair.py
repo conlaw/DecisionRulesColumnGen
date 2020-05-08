@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import gurobipy as gp
 from .FairnessModule import FairnessModule
 
 class NoFair(FairnessModule):

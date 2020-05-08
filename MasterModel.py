@@ -19,6 +19,7 @@ class MasterModel(object):
                 
         #Initialize Model
         self.model = gp.Model('masterLP')
+        self.model.Params.Method = 2
         self.initModel()
     
     def initModel(self):
@@ -99,7 +100,7 @@ class MasterModel(object):
         '''
         
         #Need to deal with case when added rule not unique
-        K_p, K_z_coeff, c = self.ruleModel.addRule(rules)
+        K_p, K_z_coeff, c, K_z= self.ruleModel.addRule(rules)
         
         #Add new decision variable for each rule
         for i in range(len(c)):
@@ -108,6 +109,8 @@ class MasterModel(object):
             newCol = gp.Column()
             newCol.addTerms(K_p[:,i] , self.misClassConst)
             newCol.addTerms(c[i],  self.compConst)
+            self.fairnessModule.updateFairnessConstraint(newCol,self.fairnessConstraints,{'K_z':K_z[:,i],
+                                                                                         'Y': self.ruleModel.Y})
             
             #Add decision variable
             self.w[self.var_counter] = self.model.addVar(obj=K_z_coeff[i], 

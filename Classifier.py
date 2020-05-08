@@ -17,7 +17,7 @@ class Classifier(object):
                  args = {},
                  ruleModel = 'DNF',
                  ruleGenerator = 'Generic',
-                 fairness_module = 'EqOfOp'):
+                 fairness_module = 'unfair'):
         
         #Define class variables
         self.ruleMod = None
@@ -29,6 +29,7 @@ class Classifier(object):
         self.mip_results = []
         self.final_mip = 0
         self.final_ip = 0
+        fairness_module = args['fairness_module'] if 'fairness_module' in args else fairness_module
         
         # Map parameters to instantiated objects
         self.initFairnessModule(fairness_module)
@@ -134,10 +135,15 @@ class Classifier(object):
         Function that maps string fairness modules to objects
            - To add a new fairness module simply add the object to the if control flow
         '''
+        print(fairnessModule)
         if fairnessModule == 'unfair':
             self.fairnessModule = NoFair.NoFair(self.args)
         elif fairnessModule == 'EqOfOp':
             self.fairnessModule = EqualityOfOpportunity.EqualityOfOpportunity(self.args)
+        elif fairnessModule == 'HammingDisp':
+            self.fairnessModule = HammingDisparity.HammingDisparity(self.args)
+        elif fairnessModule == 'HammingEqOdd':
+            self.fairnessModule = HammingEqualizedOdds.HammingEqualizedOdds(self.args)
         else:
             raise Exception('No associated fairness module found.')
 

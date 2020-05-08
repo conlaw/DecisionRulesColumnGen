@@ -30,6 +30,9 @@ class FairnessModule(object):
         Returns constraint for fairness
         '''
         pass
+    
+    def updateFairnessConstraint(self, column, constraints, args):
+        return
         
             
 

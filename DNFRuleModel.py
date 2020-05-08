@@ -29,7 +29,7 @@ class DNFRuleModel(RuleModel):
             self.K_z = np.concatenate([self.K_z, K_z], axis = 1)
         
         #Return the Kp matrix and how many data points are incorrectly classified by each rule
-        return K_p, np.sum(K_z, axis = 0)
+        return K_p, np.sum(K_z, axis = 0), K_z
 
     def computeRuleC(self, rules):
         '''

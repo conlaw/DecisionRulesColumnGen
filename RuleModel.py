@@ -58,9 +58,9 @@ class RuleModel(object):
         
         #If there are no new rules, return empty arrays
         if len(new_rules) == 0:
-            return [], [], []
+            return [], [], [], []
         
-        K_p, K_z_coeff = self.computeK(new_rules)
+        K_p, K_z_coeff, K_z = self.computeK(new_rules)
         C = self.computeRuleC(new_rules)
         
         if self.rules is not None:
@@ -68,6 +68,6 @@ class RuleModel(object):
         else:
             self.rules = new_rules
         
-        return K_p, K_z_coeff, C
+        return K_p, K_z_coeff, C, K_z
     
     

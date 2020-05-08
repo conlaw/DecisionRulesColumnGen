@@ -1,1 +1,1 @@
-__all__ = ['NoFair', 'EqualityOfOpportunity']
+__all__ = ['NoFair', 'EqualityOfOpportunity', 'HammingDisparity', 'HammingEqualizedOdds']
