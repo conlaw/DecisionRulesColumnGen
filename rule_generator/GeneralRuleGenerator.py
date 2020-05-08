@@ -35,7 +35,7 @@ class GeneralRuleGenerator(object):
         if 'lam' not in args or 'mu' not in args:
             raise Exception('Required arguments not supplied for DNF IP Rule Generator.')
 
-        X, Y, mu, args['row_samples'], col_samples = self.sampler.getSample(self.ruleMod.X, self.ruleMod.Y, args['mu'])
+        X, Y, args['mu'], args['row_samples'], col_samples = self.sampler.getSample(self.ruleMod.X, self.ruleMod.Y, args['mu'])
         rules, rcs = self.ruleGen.generateRule(X, Y, args)
         final_rules, final_rcs = self.ruleSelect.getRules(rules, rcs, col_samples)
         
