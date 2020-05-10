@@ -19,7 +19,6 @@ class MasterModel(object):
                 
         #Initialize Model
         self.model = gp.Model('masterLP')
-        self.model.Params.Method = 2
         self.initModel()
     
     def initModel(self):
@@ -41,7 +40,6 @@ class MasterModel(object):
         self.compConst = self.model.addConstr( 0*self.x[0] <= self.complexityConstraint, name = 'compConst')
         
         self.fairnessConstraints = self.fairnessModule.createFairnessConstraint(self.model, self.x, self.ruleModel.Y)
-        self.model.write("fair.lp")
     
     def solve(self, relax = True, verbose = False, saveModel = False):
         '''

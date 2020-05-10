@@ -76,7 +76,7 @@ class Classifier(object):
             else:
                 if verbose:
                     print('No new rules generated.')
-                break
+                self.master.addRule(np.array([np.ones(self.ruleMod.X.shape[1])]))
             
             if timeLimit is not None: 
                 if time.perf_counter() - start_time > timeLimit:

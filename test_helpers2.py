@@ -116,6 +116,8 @@ def updateRuleSet(rule_set, rules):
         rule_set = rules
     else:
         rule_set = np.unique(np.concatenate([rule_set,rules]), axis = 0)
+    
+    return rule_set
 
 def runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, rules, res):
     test_params['fixed_model_params']['group'] = g_tr
@@ -158,7 +160,7 @@ def runNestedCV(X, Y, group, test_params, foldId = -1):
                 #Save any rules generated to use in final column gen prediction process
                 rules = classif.ruleMod.rules
                 saved_rules = updateRuleSet(saved_rules,rules)
-                hp_rules = updateRuleSet(saved_rules,rules)
+                hp_rules = updateRuleSet(hp_rules,rules)
                     
             #Store quick access for accuracy mean result
             hp_results[str(hp_val)] = res.res['mean_accuracy']
@@ -169,7 +171,7 @@ def runNestedCV(X, Y, group, test_params, foldId = -1):
     
     return test_params, saved_rules
 
-def run_test(tests_raw, globalArgs, dataInfo, verbose = False):
+def run_test(tests_raw, globalArgs, dataInfo, save_rule_set = False, results_path = './results/', verbose = False):
     globalRules = None
     globArgs = extractGlobalArgs(globalArgs)
     
@@ -202,6 +204,11 @@ def run_test(tests_raw, globalArgs, dataInfo, verbose = False):
             final_params, saved_rules = runNestedCV(X_train, Y_train, g_train, tests[test], foldId = i)
             
             globalRules = updateRuleSet(globalRules, saved_rules)
+            
+            if save_rule_set:
+                r = json.dumps(globalRules.tolist())
+                with open(results_path+tests[test]['name']+'_rules.txt', "w") as text_file:
+                    text_file.write(r)
 
             print('Running final model with parameters: '+ str(final_params['fixed_model_params']))
             res[test], _ = runSingleTest(X_train, Y_train, g_train, X_test, Y_test, final_params, saved_rules, res[test])
