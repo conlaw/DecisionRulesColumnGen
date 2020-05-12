@@ -34,7 +34,10 @@ class TestResults(object):
         self.res['accuracy'].append(sum(classifier.predict(test_data[0]) == test_data[1])/len(test_data[1]))
         self.res['complexity'].append(np.sum(classifier.fitRuleSet)+ len(classifier.fitRuleSet))
         self.res['num_iter'].append(classifier.numIter)
-        self.res['num_cols_gen'].append(len(classifier.ruleMod.rules))
+        if classifier.ruleMod.rules is None:
+            self.res['num_cols_gen'].append(0)
+        else:
+            self.res['num_cols_gen'].append(len(classifier.ruleMod.rules))
         self.res['mip'].append(classifier.mip_results)
         self.res['mip_final'].append(classifier.final_mip)
         self.res['ip'].append(classifier.final_ip)
@@ -119,7 +122,7 @@ def updateRuleSet(rule_set, rules):
     
     return rule_set
 
-def runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, rules, res):
+def runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, rules, res, colGen = True):
     test_params['fixed_model_params']['group'] = g_tr
 
     classif = Classifier(X_tr, Y_tr, test_params['fixed_model_params'], ruleGenerator = 'Generic')
@@ -128,14 +131,15 @@ def runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, rules, res):
     classif.fit(initial_rules = rules,
                 verbose = False, 
                 timeLimit = test_params['train_limit'], 
-                timeLimitPricing = test_params['price_limit'])
+                timeLimitPricing = test_params['price_limit'],
+                colGen = colGen)
     time_to_exec = time.perf_counter() - start_time
                         
     res.update(classif, time_to_exec, (X_t, Y_t))
     
     return res, classif
 
-def runNestedCV(X, Y, group, test_params, foldId = -1):
+def runNestedCV(X, Y, group, test_params, foldId = -1, colGen = True):
     saved_rules = None
     hp_results = {}#init results object
     break_points_hp = np.floor(np.arange(0,1+1/test_params['num_hp_splits'],
@@ -155,7 +159,7 @@ def runNestedCV(X, Y, group, test_params, foldId = -1):
                 print('Split %d'%j)
                 #Get fold
                 X_tr, Y_tr, g_tr, X_t, Y_t = getFold(X,Y, group, np.arange(break_points_hp[j], break_points_hp[j+1]))
-                res, classif = runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, hp_rules, res)
+                res, classif = runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, hp_rules, res, colGen = colGen)
                         
                 #Save any rules generated to use in final column gen prediction process
                 rules = classif.ruleMod.rules
@@ -212,5 +216,43 @@ def run_test(tests_raw, globalArgs, dataInfo, save_rule_set = False, results_pat
 
             print('Running final model with parameters: '+ str(final_params['fixed_model_params']))
             res[test], _ = runSingleTest(X_train, Y_train, g_train, X_test, Y_test, final_params, saved_rules, res[test])
+
+    return res, globalRules
+
+def run_fairness_curve(tests_raw, globalArgs, dataInfo, inpuptRules, results_path = './results/', verbose = False):
+    globalRules = None
+    globArgs = extractGlobalArgs(globalArgs)
+    
+    #Set-up Data
+    X,Y,group = readData(dataInfo)
+                
+    #Set-up tests
+    tests = []
+    for test in tests_raw:
+        checkArgs(test)
+        tests.append(extractArgs(test))
+    
+    #Create results
+    res = []
+    for i in range(len(tests)):
+        res.append(TestResults(tests[i]['name']))
+        
+    #Prepare data indices
+    break_points = np.floor(np.arange(0,1+1/globArgs['num_splits'],1/globArgs['num_splits'])*X.shape[0]).astype(np.int)
+
+    for i in range(globArgs['num_splits']):
+        print('****** Running split %d ******'%i)
+        
+        #Get data for this fold
+        X_train, Y_train, g_train, X_test, Y_test = getFold(X,Y, group, np.arange(break_points[i], break_points[i+1]))
+        
+        #Run every test for this fold
+        for test in range(len(tests)):
+            final_params, saved_rules = runNestedCV(X_train, Y_train, g_train, tests[test], foldId = i, colGen = False)
+
+            print('Running test with parameters: '+ str(tests[test]['fixed_model_params']))
+            res[test], _ = runSingleTest(X_train, Y_train, g_train, 
+                                         X_test, Y_test, final_params, 
+                                         inpuptRules, res[test], colGen = False)
 
     return res, globalRules
