@@ -37,7 +37,7 @@ class Classifier(object):
         self.initRuleGenerator(ruleGenerator)
         self.master = MasterModel(self.ruleMod, self.fairnessModule, self.args)
         
-    def fit(self, initial_rules = None, verbose = False, timeLimit = None, timeLimitPricing = None):
+    def fit(self, initial_rules = None, verbose = False, timeLimit = None, timeLimitPricing = None, colGen = True):
         '''
         Function to generate a rule set
             - Can take initial set of rules
@@ -49,9 +49,9 @@ class Classifier(object):
             self.master.addRule(initial_rules)
         
         if timeLimit is not None:
-            start_time = time.perf_counter() 
+            start_time = time.perf_counter()
         
-        while True:
+        while colGen:
             self.numIter += 1
             # Solve relaxed version of restricted problem
             if verbose:
@@ -90,7 +90,7 @@ class Classifier(object):
         results = self.master.solve(verbose = verbose, relax = False)
         
         self.fitRuleSet = results['ruleSet']
-        self.final_mip = self.mip_results[-1]
+        self.final_mip = self.mip_results[-1] if colGen else -1
         self.final_ip = results['obj']
         
         #Return final rules
