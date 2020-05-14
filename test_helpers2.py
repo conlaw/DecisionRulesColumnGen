@@ -141,13 +141,14 @@ def runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, rules, res, colGen = 
 
 def runNestedCV(X, Y, group, test_params, foldId = -1, colGen = True):
     saved_rules = None
-    hp_results = {}#init results object
     break_points_hp = np.floor(np.arange(0,1+1/test_params['num_hp_splits'],
                                          1/test_params['num_hp_splits'])*X.shape[0]).astype(np.int)
 
     for hp in test_params['hyper_paramaters']:
+        hp_results = {}#init results object
+        
         for hp_val in test_params['hyper_paramaters'][hp]:
-
+            
             res = TestResults(test_params['name']+' '+'(%s,%d)'%(hp, hp_val)+'-'+str(foldId))
             test_params['fixed_model_params'][hp] = hp_val
             res.res['hp'] = hp
@@ -256,3 +257,73 @@ def run_fairness_curve(tests_raw, globalArgs, dataInfo, inpuptRules, results_pat
                                          inpuptRules, res[test], colGen = False)
 
     return res, globalRules
+
+def run_fairTest(epsilons, tests_raw, globalArgs, dataInfo, save_rule_set = False, results_path = './results/', verbose = False):
+    globArgs = extractGlobalArgs(globalArgs)
+    
+    #Set-up Data
+    X,Y,group = readData(dataInfo)
+                
+    #Set-up tests
+    tests = []
+    for test in tests_raw:
+        checkArgs(test)
+        tests.append(extractArgs(test))
+    
+    #Create results
+    res = []
+    test_eps_res = []
+    for i in range(len(tests)):
+        res.append(TestResults(tests[i]['name']))
+        eps_res = []
+        for eps in epsilons:
+            eps_res.append(TestResults(tests[i]['name']+'_'+str(eps)))
+        
+        test_eps_res.append(eps_res)
+                
+    #Prepare data indices
+    break_points = np.floor(np.arange(0,1+1/globArgs['num_splits'],1/globArgs['num_splits'])*X.shape[0]).astype(np.int)
+
+    for i in range(globArgs['num_splits']):
+        print('****** Running split %d ******'%i)
+        
+        #Get data for this fold
+        X_train, Y_train, g_train, X_test, Y_test = getFold(X,Y, group, np.arange(break_points[i], break_points[i+1]))
+        
+        fold_rules = None
+        
+        #Run every test for this fold
+        for test in range(len(tests)):
+            print('**** Running Test %s ****'%tests[test]['name'])
+            final_params, saved_rules = runNestedCV(X_train, Y_train, g_train, tests[test], foldId = i)
+            
+            fold_rules = updateRuleSet(fold_rules, saved_rules)
+
+            print('Running epsilons with generated rules: '+ str(final_params['fixed_model_params']))
+            test_eps_res[test] = run_fairness_curve2(epsilons, test_eps_res[test],
+                                                     final_params,
+                                                     (X_train, Y_train, g_train),
+                                                     (X_test, Y_test), 
+                                                     fold_rules,
+                                                     fold_id = i)
+
+    return eps_res
+
+def run_fairness_curve2(epsilons, eps_results, final_params_raw, train_data, test_data, inpuptRules, results_path = './results/', verbose = False, fold_id = -1):
+    #Run every test for this fold
+    final_params = copy.deepcopy(final_params_raw)
+    
+    del final_params['fixed_model_params']['epsilon']
+    del final_params['hyper_paramaters']['epsilon']
+
+    for i in range(len(epsilons)):
+        final_params['fixed_model_params']['epsilon'] =  epsilons[i]
+        print('FINAL PARAMS: ', final_params)
+        final_params, saved_rules = runNestedCV(train_data[0], train_data[1], train_data[2], final_params, foldId = fold_id, colGen = False)
+
+        print('Running CURVE test with parameters: '+ str(final_params['fixed_model_params']))
+        eps_results[i], _ = runSingleTest(train_data[0], train_data[1], train_data[2],
+                                     test_data[0], test_data[1], final_params,inpuptRules, 
+                                            eps_results[i], colGen = False)
+
+    return eps_results

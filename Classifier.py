@@ -88,7 +88,7 @@ class Classifier(object):
             print('Solving final master problem to integer optimality')
         
         results = self.master.solve(verbose = verbose, relax = False)
-        
+                    
         self.fitRuleSet = results['ruleSet']
         self.final_mip = self.mip_results[-1] if colGen else -1
         self.final_ip = results['obj']
