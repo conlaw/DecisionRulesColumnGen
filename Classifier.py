@@ -37,7 +37,8 @@ class Classifier(object):
         self.initRuleGenerator(ruleGenerator)
         self.master = MasterModel(self.ruleMod, self.fairnessModule, self.args)
         
-    def fit(self, initial_rules = None, verbose = False, timeLimit = None, timeLimitPricing = None, colGen = True):
+    def fit(self, initial_rules = None, verbose = False, timeLimit = None, 
+            timeLimitPricing = None, colGen = True, rule_filter = False):
         '''
         Function to generate a rule set
             - Can take initial set of rules
@@ -87,7 +88,10 @@ class Classifier(object):
         if verbose:
             print('Solving final master problem to integer optimality')
         
-        results = self.master.solve(verbose = verbose, relax = False)
+        if rule_filter:
+            results = self.filterSolveMIP(verbose = verbose)
+        else:
+            results = self.master.solve(verbose = verbose, relax = False)
                     
         self.fitRuleSet = results['ruleSet']
         self.final_mip = self.mip_results[-1] if colGen else -1
@@ -95,7 +99,25 @@ class Classifier(object):
         
         #Return final rules
         return self
+    
+    def filterSolveMIP(self, K = 1000, verbose = False):
+        '''
+        Function to run a two-stage IP solver:
+        Stage 1) Solve MIP, and compute reduced costs for all rules. Retain best K
+        Stage 2) Solve IP for best K rules
+        '''
+        results = self.master.solve(verbose = verbose, relax = True)
+        results['row_samples'] = np.ones(self.ruleMod.X.shape[0]).astype(np.bool)
+        reduced_costs = self.fairnessModule.computeReducedCosts(self.ruleMod.X, self.ruleMod.Y, self.ruleMod.rules, results)
+        reduced_rule_set = self.ruleMod.rules[np.argsort(reduced_costs)[:K]]
+        self.reset(reduced_rule_set)
         
+        return self.master.solve(verbose = verbose, relax = False)
+        
+    def reset(self, rules = None):
+        self.master.resetModel(rules)
+        self.ruleMod.reset(rules)
+    
     def predict(self, X):
         '''
         Function to predict class labels using the fitted rule set

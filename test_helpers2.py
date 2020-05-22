@@ -122,7 +122,7 @@ def updateRuleSet(rule_set, rules):
     
     return rule_set
 
-def runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, rules, res, colGen = True):
+def runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, rules, res, colGen = True, rule_filter = False):
     test_params['fixed_model_params']['group'] = g_tr
 
     classif = Classifier(X_tr, Y_tr, test_params['fixed_model_params'], ruleGenerator = 'Generic')
@@ -132,14 +132,15 @@ def runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, rules, res, colGen = 
                 verbose = False, 
                 timeLimit = test_params['train_limit'], 
                 timeLimitPricing = test_params['price_limit'],
-                colGen = colGen)
+                colGen = colGen,
+                rule_filter = rule_filter)
     time_to_exec = time.perf_counter() - start_time
                         
     res.update(classif, time_to_exec, (X_t, Y_t))
     
     return res, classif
 
-def runNestedCV(X, Y, group, test_params, foldId = -1, colGen = True):
+def runNestedCV(X, Y, group, test_params, foldId = -1, colGen = True, rule_filter = False):
     saved_rules = None
     break_points_hp = np.floor(np.arange(0,1+1/test_params['num_hp_splits'],
                                          1/test_params['num_hp_splits'])*X.shape[0]).astype(np.int)
@@ -160,7 +161,8 @@ def runNestedCV(X, Y, group, test_params, foldId = -1, colGen = True):
                 print('Split %d'%j)
                 #Get fold
                 X_tr, Y_tr, g_tr, X_t, Y_t = getFold(X,Y, group, np.arange(break_points_hp[j], break_points_hp[j+1]))
-                res, classif = runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, hp_rules, res, colGen = colGen)
+                res, classif = runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, 
+                                             hp_rules, res, colGen = colGen, rule_filter = rule_filter)
                         
                 #Save any rules generated to use in final column gen prediction process
                 rules = classif.ruleMod.rules
@@ -319,7 +321,8 @@ def run_fairness_curve2(epsilons, eps_results, final_params_raw, train_data, tes
     for i in range(len(epsilons)):
         final_params['fixed_model_params']['epsilon'] =  epsilons[i]
         print('FINAL PARAMS: ', final_params)
-        final_params, saved_rules = runNestedCV(train_data[0], train_data[1], train_data[2], final_params, foldId = fold_id, colGen = False)
+        final_params, saved_rules = runNestedCV(train_data[0], train_data[1], train_data[2], final_params, 
+                                                foldId = fold_id, colGen = False, rule_filter = True)
 
         print('Running CURVE test with parameters: '+ str(final_params['fixed_model_params']))
         eps_results[i], _ = runSingleTest(train_data[0], train_data[1], train_data[2],

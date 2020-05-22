@@ -1,3 +1,5 @@
+import numpy as np
+
 class FairnessModule(object):
     
     def __init__(self, args = {}):
@@ -11,11 +13,22 @@ class FairnessModule(object):
         '''
         pass  
     
-    def computeObjective(self, rules, reduced_costs, col_samples):
+    def computeObjective(self, X, Y, features, args):
         '''
         Returns reduced cost for pricing problem for given inputs
         '''
         pass  
+    
+    def computeReducedCosts(self, X, Y, rules, args):
+        '''
+        Returns reduced costs for all rules
+        '''
+        reduced_costs = []
+        
+        for rule in rules:
+            reduced_costs.append(self.computeObjective(X, Y, np.nonzero(rule)[0], args))
+        
+        return np.array(reduced_costs)
     
     def extractDualVariables(self, constraint):
         '''

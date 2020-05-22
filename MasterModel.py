@@ -90,6 +90,13 @@ class MasterModel(object):
 
         
         return results
+    
+    def resetModel(self, initialRules = None):
+        self.model = gp.Model('masterLP')
+        self.initModel()
+        self.addRule(initialRules)
+        return
+        
         
     def addRule(self, rules): 
         '''

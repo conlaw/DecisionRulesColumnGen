@@ -16,11 +16,8 @@ class RuleModel(object):
         self.Y = Y
         
         #Initialize constants
-        self.rules = None
-        self.K_p = None 
-        self.K_z = None
-        self.C = None 
-            
+        self.reset()
+        
     def computeK(self, rules):
         '''
         Takes a set of rules and returns K_p, and K_z coefficient
@@ -48,6 +45,16 @@ class RuleModel(object):
         - Needs to be specified in the child class
         '''
         pass
+    
+    def reset(self, initial_rules = None):
+        self.rules = None
+        self.K_p = None 
+        self.K_z = None
+        self.C = None 
+        
+        if initial_rules is not None:
+            self.addRule(initial_rules)
+
     
     def addRule(self, rules):
         '''
