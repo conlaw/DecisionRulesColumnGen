@@ -5,6 +5,7 @@ from gurobipy import GRB
 from .data_sampler import *
 from .generator import *
 from .rule_sampler import *
+import time
 
 class GeneralRuleGenerator(object):
     '''
@@ -34,11 +35,21 @@ class GeneralRuleGenerator(object):
         
         if 'lam' not in args or 'mu' not in args:
             raise Exception('Required arguments not supplied for DNF IP Rule Generator.')
-
+        print('Starting row sampling')
+        start = time.perf_counter()
         X, Y, args['mu'], args['row_samples'], col_samples = self.sampler.getSample(self.ruleMod.X, self.ruleMod.Y, args['mu'])
-        rules, rcs = self.ruleGen.generateRule(X, Y, args)
-        final_rules, final_rcs = self.ruleSelect.getRules(rules, rcs, col_samples)
+        print('Row sampling took %.2f seconds'%(time.perf_counter() - start))
         
+        print('Starting Rule generation')
+        start = time.perf_counter()
+        rules, rcs = self.ruleGen.generateRule(X, Y, args)
+        print('Rule generation took %.2f seconds'%(time.perf_counter() - start))
+
+        print('Starting Rule selection')
+        start = time.perf_counter()
+        final_rules, final_rcs = self.ruleSelect.getRules(rules, rcs, col_samples)
+        print('Rule selection took %.2f seconds'%(time.perf_counter() - start))
+
         return len(final_rules) > 0 , final_rules
         
         

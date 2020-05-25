@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
+import time
 
 class MasterModel(object):
     '''
@@ -51,6 +52,11 @@ class MasterModel(object):
         #Update model, select version to run and optimize
         self.model.update()
         self.finalMod = self.model.relax() if relax else self.model #Can put something else instead of base MIP solver
+        
+        #Need to un-hard code this later
+        if not relax:
+            self.finalMod.Params.TimeLimit = 300
+            
         self.finalMod.Params.OutputFlag = verbose
         self.finalMod.optimize()
         self.model_count += 1
@@ -91,10 +97,18 @@ class MasterModel(object):
         
         return results
     
+    def getRC(self):
+        decisionVars = self.finalMod.getVars()
+        return [v.getAttr("RC") for v in decisionVars if 'w' in v.getAttr("VarName")]
+    
     def resetModel(self, initialRules = None):
         self.model = gp.Model('masterLP')
+        print('init model')
         self.initModel()
+        print('adding rules')
         self.addRule(initialRules)
+        print('done')
+
         return
         
         
@@ -104,9 +118,14 @@ class MasterModel(object):
         -Input takes LIST of rule objects
         '''
         
+        start_time = time.perf_counter()
+
         #Need to deal with case when added rule not unique
         K_p, K_z_coeff, c, K_z= self.ruleModel.addRule(rules)
         
+        print('Rule model adding rules took %.2f seconds'%(time.perf_counter() - start_time))
+        start_time = time.perf_counter()
+
         #Add new decision variable for each rule
         for i in range(len(c)):
             
@@ -123,6 +142,7 @@ class MasterModel(object):
                                            name="w[%d]"%self.var_counter, 
                                            column=newCol)
             self.var_counter += 1
+        print('Adding columns took %.2f seconds'%(time.perf_counter() - start_time))
 
     
     def getRuleSet(self, decisionVars):
@@ -138,7 +158,37 @@ class MasterModel(object):
             return self.ruleModel.rules[inclRules]
         else:
             return []
-            
+        
+    def getAllSolutions(self):
+        '''
+        Return rule with best accuracy
+        '''
+        
+        solCount = self.model.SolCount
+        solutions = []
+        objs = []
+        
+        #Loop through stored solutions and keep if negative reduced cost
+        for i in range(solCount):
+            self.model.Params.SolutionNumber = i
+            solutions.append(self.getRuleSetNumpy(self.finalMod.getAttr(GRB.Attr.Xn)))
+        
+        print('Number of solutions returned: ', len(solutions))
+        return solutions
+
+    def getRuleSetNumpy(self, decisionVars):
+        '''
+        Given final decision variables, returns the optimal rules as determined by the model
+        '''
+        
+        # For rules generated during relaxed version, incldues all rules where w > 0
+        inclRules = [v > 0 for v in decisionVars[len(self.x)::]]
+        
+        # Return what we can given the current state of variables
+        if len(inclRules) > 0 and self.ruleModel.rules is not None: 
+            return self.ruleModel.rules[inclRules]
+        else:
+            return []
         
         
         

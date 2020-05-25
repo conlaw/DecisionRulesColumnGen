@@ -46,14 +46,11 @@ class RuleModel(object):
         '''
         pass
     
-    def reset(self, initial_rules = None):
+    def reset(self):
         self.rules = None
         self.K_p = None 
         self.K_z = None
         self.C = None 
-        
-        if initial_rules is not None:
-            self.addRule(initial_rules)
 
     
     def addRule(self, rules):

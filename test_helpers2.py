@@ -327,6 +327,6 @@ def run_fairness_curve2(epsilons, eps_results, final_params_raw, train_data, tes
         print('Running CURVE test with parameters: '+ str(final_params['fixed_model_params']))
         eps_results[i], _ = runSingleTest(train_data[0], train_data[1], train_data[2],
                                      test_data[0], test_data[1], final_params,inpuptRules, 
-                                            eps_results[i], colGen = False)
+                                            eps_results[i], colGen = False, rule_filter = True)
 
     return eps_results

@@ -47,6 +47,7 @@ class Classifier(object):
         
         # Add initial rules to master model
         if initial_rules is not None:
+            print('Adding Rules')
             self.master.addRule(initial_rules)
         
         if timeLimit is not None:
@@ -57,7 +58,11 @@ class Classifier(object):
             # Solve relaxed version of restricted problem
             if verbose:
                 print('Solving Restricted LP')
+            
+            print('Solving Master')
+            master_solve = time.perf_counter()
             results = self.master.solve(verbose = verbose, relax = True)
+            print('Master solving took %.2f seconds'%(time.perf_counter() - master_solve))
             results['verbose'] = verbose
             self.mip_results.append(results['obj'])
             
@@ -67,7 +72,10 @@ class Classifier(object):
             # Generate new candidate rules
             if verbose:
                 print('Generating Rule')
+            print('Starting Rule Generation')
+            rule_gen = time.perf_counter()
             ruleFlag, rules = self.ruleGen.generateRule(results)
+            print('Rule generation took %.2f seconds'%(time.perf_counter() - rule_gen))
             
             # If no new rules generated exit out and solve master to optimality
             if ruleFlag:
@@ -93,7 +101,7 @@ class Classifier(object):
         else:
             results = self.master.solve(verbose = verbose, relax = False)
                     
-        self.fitRuleSet = results['ruleSet']
+        self.fitBestRulesAccuracy(self.master.getAllSolutions())
         self.final_mip = self.mip_results[-1] if colGen else -1
         self.final_ip = results['obj']
         
@@ -106,17 +114,38 @@ class Classifier(object):
         Stage 1) Solve MIP, and compute reduced costs for all rules. Retain best K
         Stage 2) Solve IP for best K rules
         '''
+        print('Solving relaxed (filter) master')
+        print('Solving with %d rules'%len(self.ruleMod.rules))
+        master_solve = time.perf_counter()
         results = self.master.solve(verbose = verbose, relax = True)
-        results['row_samples'] = np.ones(self.ruleMod.X.shape[0]).astype(np.bool)
-        reduced_costs = self.fairnessModule.computeReducedCosts(self.ruleMod.X, self.ruleMod.Y, self.ruleMod.rules, results)
-        reduced_rule_set = self.ruleMod.rules[np.argsort(reduced_costs)[:K]]
-        self.reset(reduced_rule_set)
+        print('Master solving took %.2f seconds'%(time.perf_counter() - master_solve))
         
-        return self.master.solve(verbose = verbose, relax = False)
+        print('Computing reduced costs')
+        start = time.perf_counter()
+        reduced_costs = self.master.getRC()
+        print('RC took %.2f seconds'%(time.perf_counter() - start))
+        
+        print('Sorting RC and reset')
+        start = time.perf_counter()
+        print('np.argsort(reduced_costs): ', np.argsort(reduced_costs))
+        reduced_rule_set = self.ruleMod.rules[np.argsort(reduced_costs)[:K]]
+        print('Length of reduced rule set: ', len(reduced_rule_set))
+        self.reset(reduced_rule_set)
+        print('Sorting RC/reset took %.2f seconds'%(time.perf_counter() - start))
+
+        print('Solving master IP')
+        self.master.model.write('filteredproblem.lp')
+        master_solve = time.perf_counter()
+        results = self.master.solve(verbose = verbose, relax = False)
+        print('Master solving took %.2f seconds'%(time.perf_counter() - master_solve))
+
+        return results
         
     def reset(self, rules = None):
+        print('resetting ruleMod')
+        self.ruleMod.reset()
+        print('resetting master')
         self.master.resetModel(rules)
-        self.ruleMod.reset(rules)
     
     def predict(self, X):
         '''
@@ -129,7 +158,23 @@ class Classifier(object):
             return np.repeat(sum(self.ruleMod.Y) >= len(self.ruleMod.Y)/2, X.shape[0])
         
         return self.ruleMod.predict(X, self.fitRuleSet)
-        
+    
+    def fitBestRulesAccuracy(self, solutions):
+        accuracies = []
+        for sol in solutions:
+            print('Solution:', sol)
+            if len(sol) == 0:
+                pred = np.repeat(sum(self.ruleMod.Y) >= len(self.ruleMod.Y)/2, self.ruleMod.X.shape[0])
+            else:
+                pred = self.ruleMod.predict(self.ruleMod.X, sol)
+            print('Accuracy: ', sum(pred == self.ruleMod.Y)/len(self.ruleMod.Y))
+            accuracies.append(sum(pred == self.ruleMod.Y)/len(self.ruleMod.Y))
+            
+        print('Best accuracy:', max(accuracies))
+        self.fitRuleSet = solutions[np.argmax(accuracies)]
+        print('Selected Rule set:', self.fitRuleSet)
+         
+    
     def initRuleModel(self, X, Y, ruleModel):
         '''
         Function that maps string rule models to objects
