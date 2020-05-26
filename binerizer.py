@@ -28,7 +28,7 @@ def threshNumeric(data, column, quant = 10):
     Creates binarized numeric features using sequence of thresholds specified by the sample quantiles
     Returns: Pandas dataframe with one column representing > quant and one <= quant for each sample quantile
     '''
-    quantiles = np.unique(np.quantile(data[column], np.arange(1/quant,1,1/quant)))
+    quantiles = np.unique(np.quantile(data[column][data[column].notnull()], np.arange(1/quant,1,1/quant)))
     lowThresh = np.transpose([np.where(data[column] <= x, 1, 0) for x in quantiles])
     highThresh = 1-lowThresh
     
