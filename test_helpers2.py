@@ -8,32 +8,42 @@ import random
 import time
 import json
 import copy
+
 class TestResults(object):
     '''
     Object to contain and run the restricted model
     '''
-    def __init__(self, testName, results_path = './results/'):
+    def __init__(self, testName, results_path = './results/', group = False):
         self.name = testName
         self.resultsPath = results_path
+        self.evalGroups = group
         self.res = {}
         self.metrics = ['accuracy',
                        'mip',
                        'mip_final',
                        'ip',
                        'complexity',
-                       'fairness',
+                       'eqOfOp',
                        'times',
                        'num_iter',
                        'num_cols_gen']
         
+        if self.evalGroups:
+            self.metrics.append('accuracy_True')
+            self.metrics.append('accuracy_False')
+            self.metrics.append('eqOp_True')
+            self.metrics.append('eqOp_False')
+        
         for metric in self.metrics:
             self.res[metric] = []
         
-    def update(self, classifier, time, test_data):
+    def update(self, classifier, time, test_data, groups = None):
+        self.computeAccuracyMetrics(classifier, test_data, groups)
+        
         self.res['times'].append(time)
-        self.res['accuracy'].append(sum(classifier.predict(test_data[0]) == test_data[1])/len(test_data[1]))
         self.res['complexity'].append(np.sum(classifier.fitRuleSet)+ len(classifier.fitRuleSet))
         self.res['num_iter'].append(classifier.numIter)
+        
         if classifier.ruleMod.rules is None:
             self.res['num_cols_gen'].append(0)
         else:
@@ -50,7 +60,21 @@ class TestResults(object):
         
         self.printResult()
         self.write()
-
+    
+    def computeAccuracyMetrics(self, classifier, test_data, groups):
+        self.res['accuracy'].append(sum(classifier.predict(test_data[0]) == test_data[1])/len(test_data[1]))
+        
+        if self.evalGroups:
+            print(len(groups), len(test_data[0]), len(test_data[1]))
+            pos_preds = classifier.predict(test_data[0][groups])
+            neg_preds = classifier.predict(test_data[0][~groups])
+            
+            self.res['accuracy_True'].append(sum(pos_preds == test_data[1][groups])/len(test_data[1][groups]))
+            self.res['accuracy_False'].append(sum(neg_preds ==  test_data[1][~groups])/len(test_data[1][~groups]))
+            
+            self.res['eqOp_True'].append(sum(pos_preds[test_data[1][groups]])/sum(test_data[1][groups]))
+            self.res['eqOp_False'].append(sum(neg_preds[test_data[1][~groups]])/sum(test_data[1][~groups]))
+        
     def printResult(self):
         print('Results: (Acc) %.3f (Time) %.0f (Complex) %.0f (Cols Gen) %.0f  (Num Iter) %.0f'%(self.res['accuracy'][-1], 
                                                                                                  self.res['times'][-1], 
@@ -111,8 +135,9 @@ def getFold(X,Y,group, indices):
 
     X_test = X[indices,:]
     Y_test = Y[indices]
+    g_test = group[indices]
     
-    return X_train, Y_train, g_train, X_test, Y_test
+    return X_train, Y_train, g_train, X_test, Y_test, g_test
 
 def updateRuleSet(rule_set, rules):
     if rule_set is None:
@@ -122,7 +147,7 @@ def updateRuleSet(rule_set, rules):
     
     return rule_set
 
-def runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, rules, res, colGen = True, rule_filter = False):
+def runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, g_t, test_params, rules, res, colGen = True, rule_filter = False):
     test_params['fixed_model_params']['group'] = g_tr
 
     classif = Classifier(X_tr, Y_tr, test_params['fixed_model_params'], ruleGenerator = 'Generic')
@@ -136,7 +161,7 @@ def runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, rules, res, colGen = 
                 rule_filter = rule_filter)
     time_to_exec = time.perf_counter() - start_time
                         
-    res.update(classif, time_to_exec, (X_t, Y_t))
+    res.update(classif, time_to_exec, (X_t, Y_t), g_t)
     
     return res, classif
 
@@ -160,8 +185,8 @@ def runNestedCV(X, Y, group, test_params, foldId = -1, colGen = True, rule_filte
             for j in range(test_params['num_hp_splits']):
                 print('Split %d'%j)
                 #Get fold
-                X_tr, Y_tr, g_tr, X_t, Y_t = getFold(X,Y, group, np.arange(break_points_hp[j], break_points_hp[j+1]))
-                res, classif = runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, test_params, 
+                X_tr, Y_tr, g_tr, X_t, Y_t, g_t = getFold(X,Y, group, np.arange(break_points_hp[j], break_points_hp[j+1]))
+                res, classif = runSingleTest(X_tr, Y_tr, g_tr, X_t, Y_t, g_t, test_params, 
                                              hp_rules, res, colGen = colGen, rule_filter = rule_filter)
                         
                 #Save any rules generated to use in final column gen prediction process
@@ -203,7 +228,7 @@ def run_test(tests_raw, globalArgs, dataInfo, save_rule_set = False, results_pat
         print('****** Running split %d ******'%i)
         
         #Get data for this fold
-        X_train, Y_train, g_train, X_test, Y_test = getFold(X,Y, group, np.arange(break_points[i], break_points[i+1]))
+        X_train, Y_train, g_train, X_test, Y_test, g_test = getFold(X,Y, group, np.arange(break_points[i], break_points[i+1]))
         
         #Run every test for this fold
         for test in range(len(tests)):
@@ -218,7 +243,7 @@ def run_test(tests_raw, globalArgs, dataInfo, save_rule_set = False, results_pat
                     text_file.write(r)
 
             print('Running final model with parameters: '+ str(final_params['fixed_model_params']))
-            res[test], _ = runSingleTest(X_train, Y_train, g_train, X_test, Y_test, final_params, saved_rules, res[test])
+            res[test], _ = runSingleTest(X_train, Y_train, g_train, X_test, Y_test, g_test, final_params, saved_rules, res[test])
 
     return res, globalRules
 
@@ -247,7 +272,7 @@ def run_fairness_curve(tests_raw, globalArgs, dataInfo, inpuptRules, results_pat
         print('****** Running split %d ******'%i)
         
         #Get data for this fold
-        X_train, Y_train, g_train, X_test, Y_test = getFold(X,Y, group, np.arange(break_points[i], break_points[i+1]))
+        X_train, Y_train, g_train, X_test, Y_test, g_test = getFold(X,Y, group, np.arange(break_points[i], break_points[i+1]))
         
         #Run every test for this fold
         for test in range(len(tests)):
@@ -255,12 +280,13 @@ def run_fairness_curve(tests_raw, globalArgs, dataInfo, inpuptRules, results_pat
 
             print('Running test with parameters: '+ str(tests[test]['fixed_model_params']))
             res[test], _ = runSingleTest(X_train, Y_train, g_train, 
-                                         X_test, Y_test, final_params, 
+                                         X_test, Y_test, g_test, final_params, 
                                          inpuptRules, res[test], colGen = False)
 
     return res, globalRules
 
-def run_fairTest(epsilons, tests_raw, globalArgs, dataInfo, save_rule_set = False, results_path = './results/', verbose = False):
+def run_fairTest(epsilons, tests_raw, globalArgs, dataInfo, save_rule_set = False, 
+                 results_path = './results/', verbose = False, test_complex = None):
     globArgs = extractGlobalArgs(globalArgs)
     
     #Set-up Data
@@ -275,13 +301,24 @@ def run_fairTest(epsilons, tests_raw, globalArgs, dataInfo, save_rule_set = Fals
     #Create results
     res = []
     test_eps_res = []
-    for i in range(len(tests)):
-        res.append(TestResults(tests[i]['name']))
-        eps_res = []
-        for eps in epsilons:
-            eps_res.append(TestResults(tests[i]['name']+'_'+str(eps)))
-        
-        test_eps_res.append(eps_res)
+    if test_complex is not None:
+        for i in range(len(tests)):
+            res.append(TestResults(tests[i]['name']))
+            eps_res = []
+            for eps in epsilons:
+                for c in test_complex:
+                    eps_res.append(TestResults(tests[i]['name']+'_'+str(eps)+'_c_'+str(c), group = True))
+
+            test_eps_res.append(eps_res)
+
+    else:
+        for i in range(len(tests)):
+            res.append(TestResults(tests[i]['name']))
+            eps_res = []
+            for eps in epsilons:
+                eps_res.append(TestResults(tests[i]['name']+'_'+str(eps), group = True))
+
+            test_eps_res.append(eps_res)
                 
     #Prepare data indices
     break_points = np.floor(np.arange(0,1+1/globArgs['num_splits'],1/globArgs['num_splits'])*X.shape[0]).astype(np.int)
@@ -290,7 +327,7 @@ def run_fairTest(epsilons, tests_raw, globalArgs, dataInfo, save_rule_set = Fals
         print('****** Running split %d ******'%i)
         
         #Get data for this fold
-        X_train, Y_train, g_train, X_test, Y_test = getFold(X,Y, group, np.arange(break_points[i], break_points[i+1]))
+        X_train, Y_train, g_train, X_test, Y_test, g_test = getFold(X,Y, group, np.arange(break_points[i], break_points[i+1]))
         
         fold_rules = None
         
@@ -302,10 +339,18 @@ def run_fairTest(epsilons, tests_raw, globalArgs, dataInfo, save_rule_set = Fals
             fold_rules = updateRuleSet(fold_rules, saved_rules)
 
             print('Running epsilons with generated rules: '+ str(final_params['fixed_model_params']))
-            test_eps_res[test] = run_fairness_curve2(epsilons, test_eps_res[test],
+            if test_complex is not None:
+                test_eps_res[test] = run_fairness_curveComplex(epsilons, test_complex, test_eps_res[test],
                                                      final_params,
                                                      (X_train, Y_train, g_train),
-                                                     (X_test, Y_test), 
+                                                     (X_test, Y_test, g_test), 
+                                                     fold_rules,
+                                                     fold_id = i)
+            else:
+                test_eps_res[test] = run_fairness_curve2(epsilons, test_eps_res[test],
+                                                     final_params,
+                                                     (X_train, Y_train, g_train),
+                                                     (X_test, Y_test, g_test), 
                                                      fold_rules,
                                                      fold_id = i)
 
@@ -326,7 +371,33 @@ def run_fairness_curve2(epsilons, eps_results, final_params_raw, train_data, tes
 
         print('Running CURVE test with parameters: '+ str(final_params['fixed_model_params']))
         eps_results[i], _ = runSingleTest(train_data[0], train_data[1], train_data[2],
-                                     test_data[0], test_data[1], final_params,inpuptRules, 
+                                     test_data[0], test_data[1], test_data[2], final_params,inpuptRules, 
                                             eps_results[i], colGen = False, rule_filter = True)
+
+    return eps_results
+
+def run_fairness_curveComplex(epsilons, ruleC, eps_results, final_params_raw, train_data, test_data, 
+                              inpuptRules, results_path = './results/', verbose = False, fold_id = -1):
+    #Run every test for this fold
+    final_params = copy.deepcopy(final_params_raw)
+    
+    del final_params['fixed_model_params']['epsilon']
+    if 'epsilon' in final_params['hyper_paramaters']:
+        del final_params['hyper_paramaters']['epsilon']
+    del final_params['fixed_model_params']['ruleComplexity']
+    if 'ruleComplexity' in final_params['hyper_paramaters']:
+        del final_params['hyper_paramaters']['ruleComplexity']
+    
+    res_ctr = 0
+    for i in range(len(epsilons)):
+        for j in range(len(ruleC)):
+            final_params['fixed_model_params']['epsilon'] =  epsilons[i]
+            final_params['fixed_model_params']['ruleComplexity'] =  ruleC[j]
+
+            print('Running CURVE test with parameters: '+ str(final_params['fixed_model_params']))
+            eps_results[res_ctr], _ = runSingleTest(train_data[0], train_data[1], train_data[2],
+                                         test_data[0], test_data[1], test_data[2], final_params,inpuptRules, 
+                                                eps_results[res_ctr], colGen = False, rule_filter = True)
+            res_ctr +=1
 
     return eps_results

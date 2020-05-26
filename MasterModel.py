@@ -17,11 +17,25 @@ class MasterModel(object):
         self.w = {}
         self.var_counter = 0
         self.model_count = 0
+        
+        self.solver = args['masterSolver'] if 'masterSolver' in args else 'Default'
                 
         #Initialize Model
-        self.model = gp.Model('masterLP')
+        self.setupModelObject()
         self.initModel()
     
+    def setupModelObject(self):
+        self.model = gp.Model('masterLP')
+        
+        if self.solver == 'barrier':
+            print('Using barrier')
+            self.model.Params.Method = 2
+            self.model.Params.Crossover = 0
+        elif self.solver == 'barrierCrossover':
+            print('Using barrier with default crossover')
+            self.model.Params.Method = 2
+
+        
     def initModel(self):
         '''
         Function to initialize the base restricted model with no rules
@@ -102,7 +116,7 @@ class MasterModel(object):
         return [v.getAttr("RC") for v in decisionVars if 'w' in v.getAttr("VarName")]
     
     def resetModel(self, initialRules = None):
-        self.model = gp.Model('masterLP')
+        self.setupModelObject()
         print('init model')
         self.initModel()
         print('adding rules')
