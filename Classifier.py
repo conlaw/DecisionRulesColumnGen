@@ -69,6 +69,9 @@ class Classifier(object):
             if timeLimitPricing is not None:
                 results['timeLimit'] = timeLimitPricing
             
+            if timeLimit is not None:
+                results['timeLeft'] = time.perf_counter() - start_time
+
             # Generate new candidate rules
             if verbose:
                 print('Generating Rule')

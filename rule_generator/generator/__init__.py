@@ -1,1 +1,1 @@
-__all__ = ["DNF_IP_RuleGenerator", "GreedyRuleGenerator"]
+__all__ = ["DNF_IP_RuleGenerator", "GreedyRuleGenerator", "HybridGenerator"]

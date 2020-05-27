@@ -77,6 +77,8 @@ class GeneralRuleGenerator(object):
             self.ruleGen = DNF_IP_RuleGenerator.DNF_IP_RuleGenerator(self.fairnessModule, self.args)
         elif ruleGenerator == 'Greedy':
             self.ruleGen = GreedyRuleGenerator.GreedyRuleGenerator(self.fairnessModule, self.args)
+        elif ruleGenerator == 'Hybrid':
+            self.ruleGen = HybridGenerator.HybridGenerator(self.fairnessModule, self.args)
         else:
             raise Exception('No associated rule generator found.')
             
