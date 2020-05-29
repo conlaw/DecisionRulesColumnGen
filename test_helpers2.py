@@ -19,6 +19,7 @@ class TestResults(object):
         self.evalGroups = group
         self.res = {}
         self.metrics = ['accuracy',
+                        'accuracy_train',
                        'mip',
                        'mip_final',
                        'ip',
@@ -33,6 +34,11 @@ class TestResults(object):
             self.metrics.append('accuracy_False')
             self.metrics.append('eqOp_True')
             self.metrics.append('eqOp_False')
+            self.metrics.append('eqOp_True_Train')
+            self.metrics.append('eqOp_False_Train')
+            self.metrics.append('accuracy_True_Train')
+            self.metrics.append('accuracy_False_Train')
+
         
         for metric in self.metrics:
             self.res[metric] = []
@@ -62,10 +68,13 @@ class TestResults(object):
         self.write()
     
     def computeAccuracyMetrics(self, classifier, test_data, groups):
-        self.res['accuracy'].append(sum(classifier.predict(test_data[0]) == test_data[1])/len(test_data[1]))
+        X_tr = classifier.ruleMod.X
+        Y_tr = classifier.ruleMod.Y
         
+        self.res['accuracy'].append(sum(classifier.predict(test_data[0]) == test_data[1])/len(test_data[1]))
+        self.res['accuracy_train'].append(sum(classifier.predict(X_tr) == Y_tr)/len(Y_tr))
+
         if self.evalGroups:
-            print(len(groups), len(test_data[0]), len(test_data[1]))
             pos_preds = classifier.predict(test_data[0][groups])
             neg_preds = classifier.predict(test_data[0][~groups])
             
@@ -74,6 +83,17 @@ class TestResults(object):
             
             self.res['eqOp_True'].append(sum(pos_preds[test_data[1][groups]])/sum(test_data[1][groups]))
             self.res['eqOp_False'].append(sum(neg_preds[test_data[1][~groups]])/sum(test_data[1][~groups]))
+            
+            groups_tr = classifier.fairnessModule.group
+            pos_preds_tr = classifier.predict(X_tr[groups_tr])
+            neg_preds_tr = classifier.predict(X_tr[~groups_tr])
+
+            self.res['accuracy_True_Train'].append(sum(pos_preds_tr == Y_tr[groups_tr])/len(Y_tr[groups_tr]))
+            self.res['accuracy_False_Train'].append(sum(neg_preds_tr ==  Y_tr[~groups_tr])/len(Y_tr[~groups_tr]))
+            
+            self.res['eqOp_True_Train'].append(sum(pos_preds_tr[Y_tr[groups_tr]])/sum(Y_tr[groups_tr]))
+            self.res['eqOp_False_Train'].append(sum(neg_preds_tr[Y_tr[~groups_tr]])/sum(Y_tr[~groups_tr]))
+
         
     def printResult(self):
         print('Results: (Acc) %.3f (Time) %.0f (Complex) %.0f (Cols Gen) %.0f  (Num Iter) %.0f'%(self.res['accuracy'][-1], 
