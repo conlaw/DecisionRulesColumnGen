@@ -162,6 +162,18 @@ class Classifier(object):
         
         return self.ruleMod.predict(X, self.fitRuleSet)
     
+    def predictHamming(self, X):
+        '''
+        Function to predict class labels using the fitted rule set
+        '''
+        if self.fitRuleSet is None:
+            raise Exception("Model not fit. Can't make inference!")
+        
+        if len(self.fitRuleSet) == 0:
+            return np.repeat(sum(self.ruleMod.Y) >= len(self.ruleMod.Y)/2, X.shape[0])
+        
+        return self.ruleMod.predict(X, self.fitRuleSet, binary = False)
+
     def fitBestRulesAccuracy(self, solutions):
         accuracies = []
         for sol in solutions:

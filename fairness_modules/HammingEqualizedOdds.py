@@ -65,12 +65,8 @@ class HammingEqualizedOdds(FairnessModule):
     
     
     def updateFairnessConstraint(self, column, constraints, args):
-        column.addTerms(1/sum(self.group[~args['Y']])*sum(args['K_z'][self.group[~args['Y']]]) - \
-                        1/sum(~self.group[~args['Y']])*sum(args['K_z'][~self.group[~args['Y']]]),
-                        constraints['negUbFair'])
-        column.addTerms(-1/sum(self.group[~args['Y']])*sum(args['K_z'][self.group[~args['Y']]]) + \
-                        1/sum(~self.group[~args['Y']])*sum(args['K_z'][~self.group[~args['Y']]]),
-                        constraints['negLbFair'])
+        column.addTerms(args['KZ_G1'][args['rule']] - args['KZ_G2'][args['rule']],  constraints['negUbFair'])
+        column.addTerms(-args['KZ_G1'][args['rule']] + args['KZ_G2'][args['rule']], constraints['negLbFair'])
         return
 
     
@@ -92,3 +88,11 @@ class HammingEqualizedOdds(FairnessModule):
                                                 name = 'negLbFair')
 
         return constraints
+    
+    def bulkComputeGroupKz(self,K_z, Y):
+        if len(K_z) == 0:
+            return {'KZ_G1': [], 'KZ_G2': []}
+        
+        Kz_g1 = 1/(self.group[~Y].sum()) *K_z[self.group[~Y],:].sum(axis=0)
+        Kz_g2 = 1/(~self.group[~Y].sum()) * K_z[~self.group[~Y],:].sum(axis=0)
+        return {'KZ_G1': Kz_g1, 'KZ_G2': Kz_g2}

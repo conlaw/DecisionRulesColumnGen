@@ -46,6 +46,9 @@ class FairnessModule(object):
     
     def updateFairnessConstraint(self, column, constraints, args):
         return
+    
+    def bulkComputeGroupKz(self,K_z, Y):
+        return {}
         
             
 

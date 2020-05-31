@@ -49,7 +49,7 @@ class DNFRuleModel(RuleModel):
         
         return c
     
-    def predict(self, X, rules):
+    def predict(self, X, rules, binary = True):
         
         if len(rules) == 0 or len(X) == 0:
             raise Exception('Need at least one rule and one data sample!')
@@ -58,7 +58,7 @@ class DNFRuleModel(RuleModel):
         for rule in rules:
             K.append(np.all(X[:,rule.astype(np.bool_)], axis=1))
         
-        return np.sum(K, axis = 0) > 0
+        return np.sum(K, axis = 0) > 0 if binary else np.sum(K, axis = 0)
     
     def getNewRules(self, rules):
         '''

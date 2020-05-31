@@ -27,7 +27,13 @@ class TestResults(object):
                        'eqOfOp',
                        'times',
                        'num_iter',
-                       'num_cols_gen']
+                       'num_cols_gen',
+                       'hamming',
+                       'hamming_pos',
+                       'hamming_neg',
+                       'hamming_tr',
+                       'hamming_pos_tr',
+                       'hamming_neg_tr']
         
         if self.evalGroups:
             self.metrics.append('accuracy_True')
@@ -38,6 +44,19 @@ class TestResults(object):
             self.metrics.append('eqOp_False_Train')
             self.metrics.append('accuracy_True_Train')
             self.metrics.append('accuracy_False_Train')
+            self.metrics.append('hamming_True')
+            self.metrics.append('hamming_False')
+            self.metrics.append('hamming_tr_True')
+            self.metrics.append('hamming_tr_False')
+            self.metrics.append('hamming_pos_True')
+            self.metrics.append('hamming_pos_False')
+            self.metrics.append('hamming_pos_tr_True')
+            self.metrics.append('hamming_pos_tr_False')
+            self.metrics.append('hamming_neg_True')
+            self.metrics.append('hamming_neg_False')
+            self.metrics.append('hamming_neg_tr_True')
+            self.metrics.append('hamming_neg_tr_False')
+
 
         
         for metric in self.metrics:
@@ -45,7 +64,8 @@ class TestResults(object):
         
     def update(self, classifier, time, test_data, groups = None):
         self.computeAccuracyMetrics(classifier, test_data, groups)
-        
+        self.computeHammingMetrics(classifier, test_data, groups)
+
         self.res['times'].append(time)
         self.res['complexity'].append(np.sum(classifier.fitRuleSet)+ len(classifier.fitRuleSet))
         self.res['num_iter'].append(classifier.numIter)
@@ -94,7 +114,54 @@ class TestResults(object):
             self.res['eqOp_True_Train'].append(sum(pos_preds_tr[Y_tr[groups_tr]])/sum(Y_tr[groups_tr]))
             self.res['eqOp_False_Train'].append(sum(neg_preds_tr[Y_tr[~groups_tr]])/sum(Y_tr[~groups_tr]))
 
+    def computeHammingMetrics(self, classifier, test_data, groups):
+        X_tr = classifier.ruleMod.X
+        Y_tr = classifier.ruleMod.Y
         
+        testHam = self.computeHamming(classifier.predictHamming(test_data[0]), test_data[1])
+        self.res['hamming'].append(testHam[0])
+        self.res['hamming_pos'].append(testHam[1])
+        self.res['hamming_neg'].append(testHam[2])
+
+        trainHam = self.computeHamming(classifier.predictHamming(X_tr), Y_tr)
+        self.res['hamming_tr'].append(trainHam[0])
+        self.res['hamming_pos_tr'].append(trainHam[1])
+        self.res['hamming_neg_tr'].append(trainHam[2])
+        
+        if self.evalGroups:
+            ham_true = self.computeHamming(classifier.predictHamming(test_data[0][groups]),test_data[1][groups])
+            ham_false = self.computeHamming(classifier.predictHamming(test_data[0][~groups]),test_data[1][~groups])
+            
+            self.res['hamming_True'].append(ham_true[0])
+            self.res['hamming_pos_True'].append(ham_true[1])
+            self.res['hamming_neg_True'].append(ham_true[2])
+            
+            self.res['hamming_False'].append(ham_false[0])
+            self.res['hamming_pos_False'].append(ham_false[1])
+            self.res['hamming_neg_False'].append(ham_false[2])
+            
+            groups_tr = classifier.fairnessModule.group
+            ham_true = self.computeHamming(classifier.predictHamming(X_tr[groups_tr]),Y_tr[groups_tr])
+            ham_false = self.computeHamming(classifier.predictHamming(X_tr[~groups_tr]),Y_tr[~groups_tr])
+            
+            self.res['hamming_tr_True'].append(ham_true[0])
+            self.res['hamming_pos_tr_True'].append(ham_true[1])
+            self.res['hamming_neg_tr_True'].append(ham_true[2])
+            
+            self.res['hamming_tr_False'].append(ham_false[0])
+            self.res['hamming_pos_tr_False'].append(ham_false[1])
+            self.res['hamming_neg_tr_False'].append(ham_false[2])
+
+
+    def computeHamming(self,preds, y, norm = True):
+        ham_true = (preds[y] == 0).sum()
+        ham_false = preds[~y].sum()
+        ham = ham_true + ham_false
+        if norm:
+            return float(ham/len(y)), float(ham_true/y.sum()), float(ham_false/(~y).sum())
+        else:
+            return float(ham), float(ham_true), float(ham_false)
+
     def printResult(self):
         print('Results: (Acc) %.3f (Time) %.0f (Complex) %.0f (Cols Gen) %.0f  (Num Iter) %.0f'%(self.res['accuracy'][-1], 
                                                                                                  self.res['times'][-1], 

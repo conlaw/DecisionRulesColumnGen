@@ -137,6 +137,8 @@ class MasterModel(object):
         #Need to deal with case when added rule not unique
         K_p, K_z_coeff, c, K_z= self.ruleModel.addRule(rules)
         
+        FCargs = self.fairnessModule.bulkComputeGroupKz(K_z, self.ruleModel.Y)
+        
         print('Rule model adding rules took %.2f seconds'%(time.perf_counter() - start_time))
         start_time = time.perf_counter()
 
@@ -147,8 +149,9 @@ class MasterModel(object):
             newCol = gp.Column()
             newCol.addTerms(K_p[:,i] , self.misClassConst)
             newCol.addTerms(c[i],  self.compConst)
-            self.fairnessModule.updateFairnessConstraint(newCol,self.fairnessConstraints,{'K_z':K_z[:,i],
-                                                                                         'Y': self.ruleModel.Y})
+            FCargs['rule'] = i
+            
+            self.fairnessModule.updateFairnessConstraint(newCol,self.fairnessConstraints,FCargs)
             
             #Add decision variable
             self.w[self.var_counter] = self.model.addVar(obj=K_z_coeff[i], 
