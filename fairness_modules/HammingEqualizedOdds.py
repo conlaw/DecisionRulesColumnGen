@@ -26,9 +26,8 @@ class HammingEqualizedOdds(FairnessModule):
         if 'lam' not in args or 'mu' not in args or 'fairDuals' not in args or 'row_samples' not in args:
             raise Exception('Required arguments not supplied for NoFair Objective Definition.')
         
-        if 'posUbFair' not in args['fairDuals'] or 'posLbFair' not in args['fairDuals'] or \
-            'negUbFair' not in args['fairDuals'] or 'negLbFair' not in args['fairDuals']:
-            raise Exception('Required fairness dual variables not supplied for NoFair Objective Definition.')
+        if 'negUbFair' not in args['fairDuals'] or 'negLbFair' not in args['fairDuals']:
+            raise Exception('Required fairness dual variables not supplied for Hamming EqOp Objective Definition.')
         
         g = self.group[args['row_samples']]
         coeff_1 = 1 + (args['fairDuals']['negUbFair'] - args['fairDuals']['negLbFair'])/sum(g & ~Y)
@@ -50,7 +49,8 @@ class HammingEqualizedOdds(FairnessModule):
         if 'lam' not in args or 'mu' not in args or 'fairDuals' not in args or 'row_samples' not in args:
             raise Exception('Required arguments not supplied for NoFair Objective Computation.')
         
-        if 'ubFair' not in args['fairDuals'] or 'lbFair' not in args['fairDuals']:
+        if 'negUbFair' not in args['fairDuals'] or 'negLbFair' not in args['fairDuals']:
+            print(args['fairDuals'])
             raise Exception('Required fairness dual variables not supplied for NoFair Objective Computation.')
         
         classPos = np.all(X[:,features],axis=1)

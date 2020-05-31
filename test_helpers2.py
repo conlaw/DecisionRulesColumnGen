@@ -189,7 +189,8 @@ def runNestedCV(X, Y, group, test_params, foldId = -1, colGen = True, rule_filte
     saved_rules = None
     break_points_hp = np.floor(np.arange(0,1+1/test_params['num_hp_splits'],
                                          1/test_params['num_hp_splits'])*X.shape[0]).astype(np.int)
-
+    
+    print('Hyper parameters for CV: ', test_params['hyper_paramaters'])
     for hp in test_params['hyper_paramaters']:
         hp_results = {}#init results object
         

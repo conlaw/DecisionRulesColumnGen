@@ -13,7 +13,7 @@ class GreedyRuleGenerator(RuleGenerator):
     def __init__(self, fairnessModule, args = {}):        
         #Set rule complexity if supplied in arguments
         self.fairnessModule = fairnessModule
-        self.ruleComplex = args['ruleComplexity'] if 'ruleComplexity' in args else 5
+        self.ruleComplex = 5
         self.numRulesToKeep = args['numRulesToKeep'] if 'numRulesToKeep' in args else 20
         
         
