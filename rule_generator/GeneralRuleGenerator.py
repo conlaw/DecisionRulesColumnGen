@@ -75,6 +75,8 @@ class GeneralRuleGenerator(object):
 
         if ruleGenerator == 'DNF_IP':
             self.ruleGen = DNF_IP_RuleGenerator.DNF_IP_RuleGenerator(self.fairnessModule, self.args)
+        elif ruleGenerator == 'DNF_IP_OPT':
+            self.ruleGen = DNF_IP_RuleGeneratorOpt.DNF_IP_RuleGeneratorOpt(self.fairnessModule, self.args)
         elif ruleGenerator == 'Greedy':
             self.ruleGen = GreedyRuleGenerator.GreedyRuleGenerator(self.fairnessModule, self.args)
         elif ruleGenerator == 'Hybrid':
