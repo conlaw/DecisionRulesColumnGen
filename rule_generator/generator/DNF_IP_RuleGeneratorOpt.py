@@ -45,7 +45,7 @@ class DNF_IP_RuleGeneratorOpt(RuleGenerator):
                                       name="sampleConstraint[%d]"%i)
             #Constraints for data samples where Y = True
             else:
-                self.model.addConstr(gp.LinExpr(~X[i,:]*1, self.z) + D*self.delta[i] >= D,
+                self.model.addConstr(gp.LinExpr(~X[i,:]*1, self.z) + D*self.delta[i] <= D,
                                       name="sampleConstraint[%d]"%i)
 
         

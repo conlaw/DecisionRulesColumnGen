@@ -11,11 +11,12 @@ class RandomSampler(SubSampler):
         self.samplePercCol = args['samplePercCol'] if 'samplePercCol' in args else 100000
 
     
-    def getSample(self, X, Y, mu, args = {}):
+    def getSample(self, X, Y, mu, alpha, args = {}):
        
         X_sample = X
         Y_sample = Y
         mu_sample = np.array(mu)
+        alpha_sample = np.array(alpha)
         col_samples = np.ones(X.shape[1]).astype(np.bool)
         
         if self.rowSample:
@@ -24,9 +25,10 @@ class RandomSampler(SubSampler):
             X_sample = X_sample[row_samples, :]
             Y_sample = Y_sample[row_samples]
             mu_sample = mu_sample[row_samples[Y]]
+            alpha_sample = alpha_sample[row_samples[Y]]
         if self.columnSample:
             col_perc = min(self.samplePercCol/np.mean(np.sum(X > 0, axis=0))/X.shape[1],1)
             col_samples = bernoulli.rvs(col_perc, size=X.shape[1]).astype(np.bool)
             X_sample = X_sample[:, col_samples]
         
-        return X_sample, Y_sample, mu_sample, row_samples, col_samples      
+        return X_sample, Y_sample, mu_sample, alpha_sample, row_samples, col_samples      

@@ -29,7 +29,7 @@ class EqualityOfOpportunity(FairnessModule):
         g = self.group[args['row_samples']]
 
         objective = gp.LinExpr(np.ones(sum(~Y)), np.array(delta)[~Y]) #Y = False misclass term
-        objective.add(gp.LinExpr(np.array(args['mu'])*-1, np.array(delta)[Y])) #Y = True misclass term
+        objective.add(gp.LinExpr((np.array(args['alpha']) - np.array(args['mu'])), np.array(delta)[Y])) #Y = True misclass term
         objective.add(gp.LinExpr(args['lam']*np.ones(len(z)), z)) #Complexity term
         return objective
   
@@ -43,7 +43,8 @@ class EqualityOfOpportunity(FairnessModule):
                 
         classPos = np.all(X[:,features],axis=1)
         g = self.group[args['row_samples']]
-        return args['lam']*(1+len(features)) - np.dot(classPos[Y],args['mu']) + sum(classPos[~Y])
+
+        return args['lam']*(1+len(features)) + np.dot(classPos[Y],(np.array(args['alpha']) - np.array(args['mu']))) + sum(classPos[~Y])
 
     
 

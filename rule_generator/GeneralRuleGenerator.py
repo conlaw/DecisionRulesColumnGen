@@ -33,11 +33,12 @@ class GeneralRuleGenerator(object):
    
     def generateRule(self, args = {}):
         
-        if 'lam' not in args or 'mu' not in args:
+        if 'lam' not in args or 'mu' not in args or 'alpha' not in args:
             raise Exception('Required arguments not supplied for DNF IP Rule Generator.')
         print('Starting row sampling')
         start = time.perf_counter()
-        X, Y, args['mu'], args['row_samples'], col_samples = self.sampler.getSample(self.ruleMod.X, self.ruleMod.Y, args['mu'])
+        X, Y, args['mu'], args['alpha'], args['row_samples'], col_samples = self.sampler.getSample(self.ruleMod.X, self.ruleMod.Y, 
+                                                                                    args['mu'], args['alpha'])
         print('Row sampling took %.2f seconds'%(time.perf_counter() - start))
         
         print('Starting Rule generation')

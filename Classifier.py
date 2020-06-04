@@ -104,7 +104,8 @@ class Classifier(object):
         else:
             results = self.master.solve(verbose = verbose, relax = False)
                     
-        self.fitBestRulesAccuracy(self.master.getAllSolutions())
+        #self.fitBestRulesAccuracy(self.master.getAllSolutions())
+        self.fitRuleSet = results['ruleSet']
         self.final_mip = self.mip_results[-1] if colGen else -1
         self.final_ip = results['obj']
         

@@ -22,6 +22,7 @@ class DNF_IP_RuleGenerator(RuleGenerator):
         '''
         
         numSamples, numFeatures = X.shape
+        D = self.ruleComplex
         
         #Construct decision variables for new rule 
         self.z = []
@@ -40,14 +41,12 @@ class DNF_IP_RuleGenerator(RuleGenerator):
         for i in range(numSamples):
             #Constraint for data samples where Y = False
             if not Y[i]:
-                 self.model.addConstr(gp.LinExpr(~X[i,:]*1, self.z) + self.delta[i] >= 1,
+                self.model.addConstr(gp.LinExpr(~X[i,:]*1, self.z) + self.delta[i] >= 1,
                                       name="sampleConstraint[%d]"%i)
             #Constraints for data samples where Y = True
             else:
-                for j in range(numFeatures):
-                    if not X[i,j]:
-                        self.model.addConstr(self.delta[i]+self.z[j] <= 1,
-                                             name="sampleConstraint[%d]-%d"%(i,j))
+                self.model.addConstr(gp.LinExpr(~X[i,:]*1, self.z) + D*self.delta[i] <= D,
+                                      name="sampleConstraint[%d]"%i)
 
         
     def generateRule(self, X, Y, args):

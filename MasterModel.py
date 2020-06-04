@@ -40,7 +40,7 @@ class MasterModel(object):
         '''
         Function to initialize the base restricted model with no rules
         '''
-        
+        C = self.complexityConstraint
         #Initialize positive misclassification variables
         self.x = []
         for k in range(sum(self.ruleModel.Y)):
@@ -50,7 +50,11 @@ class MasterModel(object):
         self.misClassConst = []
         for i in range(len(self.x)):
             self.misClassConst.append(self.model.addConstr(self.x[i] >= 1, name="MisclassConst[%d]"%i))
- 
+        
+        self.misClasConstLB = []
+        for i in range(len(self.x)):
+            self.misClasConstLB.append(self.model.addConstr(C*self.x[i] <= C, name="MisclassConstLB[%d]"%i))
+
         #Add complexity constraint
         self.compConst = self.model.addConstr( 0*self.x[0] <= self.complexityConstraint, name = 'compConst')
         
@@ -93,6 +97,7 @@ class MasterModel(object):
 
         if relax:
             mu = []
+            alpha = []
             lam = None
             
             #Recover Dual Variables if using LP Relaxation
@@ -101,10 +106,13 @@ class MasterModel(object):
                     lam = c.Pi
                 elif c.ConstrName in self.fairnessModule.fairConstNames:
                     self.fairnessModule.extractDualVariables(c)
+                elif "MisclassConstLB" in c.ConstrName:
+                    alpha.append(c.Pi)
                 else:
                     mu.append(c.Pi)
             
             results['mu'] = mu
+            results['alpha'] = alpha
             results['lam'] = lam
             results['fairDuals'] = self.fairnessModule.fairDuals
 
@@ -148,6 +156,7 @@ class MasterModel(object):
             #Specify new column
             newCol = gp.Column()
             newCol.addTerms(K_p[:,i] , self.misClassConst)
+            newCol.addTerms(2*K_p[:,i] , self.misClasConstLB)
             newCol.addTerms(c[i],  self.compConst)
             FCargs['rule'] = i
             
