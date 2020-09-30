@@ -16,7 +16,7 @@ class DNF_IP_RuleGeneratorOpt(RuleGenerator):
         self.ruleComplex = args['ruleComplexity'] if 'ruleComplexity' in args else 100
 
 
-    def initModel(self, X, Y):
+    def initModel(self, X, Y, args, objectiveFn):
         '''
         Initialize model elements that don't vary with each iteration
         '''
@@ -33,6 +33,11 @@ class DNF_IP_RuleGeneratorOpt(RuleGenerator):
         self.delta = []
         for i in range(numSamples):
             self.delta.append(self.model.addVar(vtype=GRB.BINARY, name= "delta[%d]"%i))
+            
+        #Set objective
+        objective = objectiveFn(self.delta, self.z, Y, args)
+        self.model.setObjective(objective, GRB.MINIMIZE)
+        self.model.update()
         
         #Add complexity constraint
         self.complexConst = self.model.addConstr(gp.LinExpr(np.ones(numFeatures), self.z) <= self.ruleComplex,
@@ -40,7 +45,7 @@ class DNF_IP_RuleGeneratorOpt(RuleGenerator):
         #Add misclassification constraints
         for i in range(numSamples):
             #Constraint for data samples where Y = False
-            if not Y[i]:
+            if not self.delta[i].Obj >= 0:
                 self.model.addConstr(gp.LinExpr(~X[i,:]*1, self.z) + self.delta[i] >= 1,
                                       name="sampleConstraint[%d]"%i)
             #Constraints for data samples where Y = True
@@ -54,16 +59,10 @@ class DNF_IP_RuleGeneratorOpt(RuleGenerator):
         Solve the IP Pricing problem to generate new rule(s)
         '''
         self.model = gp.Model('masterLP')
-        self.initModel(X,Y)
+        self.initModel(X,Y, args, self.fairnessModule.defineObjective)
                            
         returnAllSolutions = args['returnAllSolutions'] if 'returnAllSolutions' in args else True
         verbose = args['verbose'] if 'verbose' in args else False
-        
-        #Create objective function
-        objective = self.fairnessModule.defineObjective(self.delta, self.z, Y, args) 
-        
-        #Set the objective and determine output level
-        self.model.setObjective(objective, GRB.MINIMIZE)
         self.model.Params.OutputFlag = verbose
         
         if 'timeLimit' in args:

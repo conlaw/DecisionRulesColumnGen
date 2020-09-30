@@ -59,10 +59,10 @@ class Classifier(object):
             if verbose:
                 print('Solving Restricted LP')
             
-            print('Solving Master')
+            #print('Solving Master')
             master_solve = time.perf_counter()
             results = self.master.solve(verbose = verbose, relax = True)
-            print('Master solving took %.2f seconds'%(time.perf_counter() - master_solve))
+            #print('Master solving took %.2f seconds'%(time.perf_counter() - master_solve))
             results['verbose'] = verbose
             self.mip_results.append(results['obj'])
             
@@ -75,10 +75,10 @@ class Classifier(object):
             # Generate new candidate rules
             if verbose:
                 print('Generating Rule')
-            print('Starting Rule Generation')
+            #print('Starting Rule Generation')
             rule_gen = time.perf_counter()
             ruleFlag, rules = self.ruleGen.generateRule(results)
-            print('Rule generation took %.2f seconds'%(time.perf_counter() - rule_gen))
+            #print('Rule generation took %.2f seconds'%(time.perf_counter() - rule_gen))
             
             # If no new rules generated exit out and solve master to optimality
             if ruleFlag:

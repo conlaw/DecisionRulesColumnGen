@@ -1,8 +1,13 @@
 import numpy as np
 
 class FairnessModule(object):
+    '''
+    Abstract object type for different implementing fairness constraints within CG framework
+    '''
     
     def __init__(self, args = {}):
+        
+        #Fair Const Names stores names of constraints in model (used to retrieve duals)
         self.fairConstNames = []
         self.fairDuals = {}
         pass

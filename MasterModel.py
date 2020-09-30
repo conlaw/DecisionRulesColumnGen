@@ -147,7 +147,7 @@ class MasterModel(object):
         
         FCargs = self.fairnessModule.bulkComputeGroupKz(K_z, self.ruleModel.Y)
         
-        print('Rule model adding rules took %.2f seconds'%(time.perf_counter() - start_time))
+        #print('Rule model adding rules took %.2f seconds'%(time.perf_counter() - start_time))
         start_time = time.perf_counter()
 
         #Add new decision variable for each rule
@@ -168,7 +168,7 @@ class MasterModel(object):
                                            name="w[%d]"%self.var_counter, 
                                            column=newCol)
             self.var_counter += 1
-        print('Adding columns took %.2f seconds'%(time.perf_counter() - start_time))
+        #print('Adding columns took %.2f seconds'%(time.perf_counter() - start_time))
 
     
     def getRuleSet(self, decisionVars):

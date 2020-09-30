@@ -3,7 +3,7 @@ import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
 from .RuleGenerator import RuleGenerator
-from .DNF_IP_RuleGenerator import DNF_IP_RuleGenerator
+from .DNF_IP_RuleGeneratorOpt import DNF_IP_RuleGeneratorOpt
 from .GreedyRuleGenerator import GreedyRuleGenerator
 
 class HybridGenerator(RuleGenerator):
@@ -18,7 +18,7 @@ class HybridGenerator(RuleGenerator):
         self.ruleComplex = args['ruleComplexity'] if 'ruleComplexity' in args else 100
         
         self.greedy = GreedyRuleGenerator(fairnessModule, args)
-        self.ip = DNF_IP_RuleGenerator(fairnessModule, args)
+        self.ip = DNF_IP_RuleGeneratorOpt(fairnessModule, args)
         self.rule_count = 0
         self.doGreedy = True
         
@@ -27,14 +27,14 @@ class HybridGenerator(RuleGenerator):
         Solve the IP Pricing problem to generate new rule(s)
         '''
         if self.rule_count < 3 and self.doGreedy:
-            print('Hybrid using greedy')
+            #print('Hybrid using greedy')
             rules, objs = self.greedy.generateRule(X,Y,args)
             
             if len(rules) == 0:
                 self.doGreedy = False
         
         if self.rule_count >= 3 or not self.doGreedy:
-            print('Hybrid using IP')
+            #print('Hybrid using IP')
             rules, objs = self.ip.generateRule(X,Y,args) 
         
         self.rule_count += 1

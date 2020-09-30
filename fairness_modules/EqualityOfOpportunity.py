@@ -11,12 +11,10 @@ class EqualityOfOpportunity(FairnessModule):
         if 'group' not in args:
             raise Exception('No group assignments!')
         
-        
         self.group = args['group']
-        
         self.fairConstNames = ['ubFair','lbFair']
-
         self.eps = args['epsilon'] if 'epsilon' in args else 0.05
+        
         return
         
     def defineObjective(self, delta, z, Y, args):
@@ -25,12 +23,15 @@ class EqualityOfOpportunity(FairnessModule):
         '''
         if 'lam' not in args or 'mu' not in args or 'fairDuals' not in args or 'row_samples' not in args:
             raise Exception('Required arguments not supplied for NoFair Objective Definition.')
-                
+        
+        #Retrieve group membership for samples
         g = self.group[args['row_samples']]
-
+        
+        #Construct Objective
         objective = gp.LinExpr(np.ones(sum(~Y)), np.array(delta)[~Y]) #Y = False misclass term
         objective.add(gp.LinExpr((np.array(args['alpha']) - np.array(args['mu'])), np.array(delta)[Y])) #Y = True misclass term
         objective.add(gp.LinExpr(args['lam']*np.ones(len(z)), z)) #Complexity term
+        
         return objective
   
     
@@ -40,7 +41,7 @@ class EqualityOfOpportunity(FairnessModule):
         '''
         if 'lam' not in args or 'mu' not in args or 'fairDuals' not in args or 'row_samples' not in args:
             raise Exception('Required arguments not supplied for NoFair Objective Computation.')
-                
+        
         classPos = np.all(X[:,features],axis=1)
         g = self.group[args['row_samples']]
 

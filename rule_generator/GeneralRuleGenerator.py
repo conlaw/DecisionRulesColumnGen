@@ -35,21 +35,16 @@ class GeneralRuleGenerator(object):
         
         if 'lam' not in args or 'mu' not in args or 'alpha' not in args:
             raise Exception('Required arguments not supplied for DNF IP Rule Generator.')
-        print('Starting row sampling')
-        start = time.perf_counter()
-        X, Y, args['mu'], args['alpha'], args['row_samples'], col_samples = self.sampler.getSample(self.ruleMod.X, self.ruleMod.Y, 
-                                                                                    args['mu'], args['alpha'])
-        print('Row sampling took %.2f seconds'%(time.perf_counter() - start))
         
-        print('Starting Rule generation')
-        start = time.perf_counter()
+        #Sample Datasets
+        X, Y, args['mu'], args['alpha'], args['row_samples'], col_samples = self.sampler.getSample(self.ruleMod.X, 
+                                                                                                   self.ruleMod.Y, 
+                                                                                                   args['mu'], args['alpha'])
+        #Generate Rules
         rules, rcs = self.ruleGen.generateRule(X, Y, args)
-        print('Rule generation took %.2f seconds'%(time.perf_counter() - start))
-
-        print('Starting Rule selection')
-        start = time.perf_counter()
+        
+        #Subsample rules to return
         final_rules, final_rcs = self.ruleSelect.getRules(rules, rcs, col_samples)
-        print('Rule selection took %.2f seconds'%(time.perf_counter() - start))
 
         return len(final_rules) > 0 , final_rules
         
@@ -86,7 +81,10 @@ class GeneralRuleGenerator(object):
             raise Exception('No associated rule generator found.')
             
     def initRuleSelect(self, ruleSelect):
-        
+        '''
+        Function that maps string rule selection rules to objects
+           - To add a new rule selection rule simply add the object to the if control flow
+        '''
         if ruleSelect == 'full':
             self.ruleSelect = FullRuleSampler.FullRuleSampler(self.args)
         elif ruleSelect == 'topX':
