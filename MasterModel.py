@@ -34,6 +34,9 @@ class MasterModel(object):
         elif self.solver == 'barrierCrossover':
             print('Using barrier with default crossover')
             self.model.Params.Method = 2
+        elif self.solver == 'simplex':
+            print('using primal simplex')
+            self.model.Params.Method = 0
 
         
     def initModel(self):
@@ -79,13 +82,14 @@ class MasterModel(object):
         self.finalMod.optimize()
         self.model_count += 1
         
-        if saveModel:
-            self.finalMod.write('model-'+str(self.model_count)+'.lp')
+        #if saveModel:
+        #    self.finalMod.write('model-'+str(self.model_count)+'.lp')
         
         #Print results if verbose
         if verbose:
-            for v in self.finalMod.getVars():
-                print('%s %g' % (v.varName, v.x))
+            #for v in self.finalMod.getVars():
+                #print('%s %g' % (v.varName, v.x))
+                #print('In basis? ' +str(v.VBasis))
             
             print('Obj: %g' % self.finalMod.objVal)
 
@@ -100,8 +104,10 @@ class MasterModel(object):
             alpha = []
             lam = None
             
+            duals = []
             #Recover Dual Variables if using LP Relaxation
             for c in self.finalMod.getConstrs():
+                #duals.append([c.ConstrName, c.Pi])
                 if c.ConstrName == 'compConst':
                     lam = c.Pi
                 elif c.ConstrName in self.fairnessModule.fairConstNames:
@@ -111,6 +117,8 @@ class MasterModel(object):
                 else:
                     mu.append(c.Pi)
             
+            #duals = pd.DataFrame.from_records(duals)
+            #duals.to_csv('duals.csv')
             results['mu'] = mu
             results['alpha'] = alpha
             results['lam'] = lam

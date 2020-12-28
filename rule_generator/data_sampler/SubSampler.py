@@ -9,7 +9,7 @@ class SubSampler(object):
     def __init__(self, args = {}):
         pass
         
-    def getSample(self, X, Y, mu, alpha, args = {}):
+    def getSample(self, X, Y, coeff, args = {}):
         '''
         Takes a set of rules and returns K_p, and K_z coefficient
         - Needs to be specified in the child class

@@ -7,6 +7,7 @@ from DNFRuleModel import DNFRuleModel
 from MasterModel import MasterModel
 from rule_generator.GeneralRuleGenerator import GeneralRuleGenerator
 from fairness_modules import *
+from master_model import *
 
 class Classifier(object):
     '''
@@ -17,7 +18,8 @@ class Classifier(object):
                  args = {},
                  ruleModel = 'DNF',
                  ruleGenerator = 'Generic',
-                 fairness_module = 'unfair'):
+                 fairness_module = 'unfair',
+                 master_model = 'regularized_oneside'):
         
         #Define class variables
         self.ruleMod = None
@@ -35,7 +37,7 @@ class Classifier(object):
         self.initFairnessModule(fairness_module)
         self.initRuleModel(X, Y, ruleModel)
         self.initRuleGenerator(ruleGenerator)
-        self.master = MasterModel(self.ruleMod, self.fairnessModule, self.args)
+        self.initMasterModel(master_model)
         
     def fit(self, initial_rules = None, verbose = False, timeLimit = None, 
             timeLimitPricing = None, colGen = True, rule_filter = False):
@@ -62,6 +64,8 @@ class Classifier(object):
             #print('Solving Master')
             master_solve = time.perf_counter()
             results = self.master.solve(verbose = verbose, relax = True)
+            
+            self.master.model.write('master_model.lp')
             #print('Master solving took %.2f seconds'%(time.perf_counter() - master_solve))
             results['verbose'] = verbose
             self.mip_results.append(results['obj'])
@@ -75,11 +79,12 @@ class Classifier(object):
             # Generate new candidate rules
             if verbose:
                 print('Generating Rule')
+            #print(results)
             #print('Starting Rule Generation')
             rule_gen = time.perf_counter()
             ruleFlag, rules = self.ruleGen.generateRule(results)
             #print('Rule generation took %.2f seconds'%(time.perf_counter() - rule_gen))
-            
+        
             # If no new rules generated exit out and solve master to optimality
             if ruleFlag:
                 if verbose:
@@ -88,8 +93,9 @@ class Classifier(object):
             else:
                 if verbose:
                     print('No new rules generated.')
-                self.master.addRule(np.array([np.ones(self.ruleMod.X.shape[1])]))
-            
+                #self.master.addRule(np.array([np.ones(self.ruleMod.X.shape[1])]))
+                break
+                            
             if timeLimit is not None: 
                 if time.perf_counter() - start_time > timeLimit:
                     print('Time limit for column generation exceeded. Solving MIP.')
@@ -218,7 +224,6 @@ class Classifier(object):
         Function that maps string fairness modules to objects
            - To add a new fairness module simply add the object to the if control flow
         '''
-        print(fairnessModule)
         if fairnessModule == 'unfair':
             self.fairnessModule = NoFair.NoFair(self.args)
         elif fairnessModule == 'EqOfOp':
@@ -229,4 +234,17 @@ class Classifier(object):
             self.fairnessModule = HammingEqualizedOdds.HammingEqualizedOdds(self.args)
         else:
             raise Exception('No associated fairness module found.')
+            
+    def initMasterModel(self, masterModel):
+        '''
+        Function that maps string master ip models to objects
+           - To add a new fairness module simply add the object to the if control flow
+        '''
+        if masterModel == 'compact_doubleside':
+            self.master = CompactDoubleSidedMaster.CompactDoubleSidedMaster(self.ruleMod, self.fairnessModule, self.args)
+        elif masterModel == 'compact_oneside':
+            self.master = CompactOneSidedMaster.CompactOneSidedMaster(self.ruleMod, self.fairnessModule, self.args)
+        elif masterModel == 'regularized_oneside':
+            self.master = RegularizedOneSidedMaster.RegularizedOneSidedMaster(self.ruleMod, self.fairnessModule, self.args)
+        
 

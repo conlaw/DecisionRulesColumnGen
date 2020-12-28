@@ -16,7 +16,7 @@ class NoFair(FairnessModule):
         if 'lam' not in args or 'mu' not in args:
             raise Exception('Required arguments not supplied for NoFair Objective Definition.')
         objective = gp.LinExpr(np.ones(sum(~Y)), np.array(delta)[~Y]) #Y = False misclass term
-        objective.add(gp.LinExpr((np.array(args['alpha']) - np.array(args['mu'])), np.array(delta)[Y])) #Y = True misclass term
+        objective.add(gp.LinExpr(np.array(args['coeff']), np.array(delta)[Y])) #Y = True misclass term
         objective.add(gp.LinExpr(args['lam']*np.ones(len(z)), z)) #Complexity term
         return objective
   
@@ -29,7 +29,7 @@ class NoFair(FairnessModule):
             raise Exception('Required arguments not supplied for NoFair Objective Computation.')
 
         classPos = np.all(X[:,features],axis=1)
-        return args['lam']*(1+len(features)) + np.dot(classPos[Y],(np.array(args['alpha']) - np.array(args['mu']))) \
+        return args['lam']*(1+len(features)) + np.dot(classPos[Y],np.array(args['coeff'])) \
                                                       + sum(classPos[~Y])
 
     

@@ -37,7 +37,7 @@ class HammingEqualizedOdds(FairnessModule):
         objective.add(gp.LinExpr((np.array(args['alpha']) - np.array(args['mu'])), np.array(delta)[Y])) #Y = True misclass term
         objective.add(gp.LinExpr(args['lam']*np.ones(len(z)), z)) #Complexity term
         objective.add(coeff_1*sum(np.array(delta)[~Y & g]))
-        objective.add(coeff_1*sum(np.array(delta)[~Y & ~g]))
+        objective.add(coeff_2*sum(np.array(delta)[~Y & ~g]))
 
         return objective
   

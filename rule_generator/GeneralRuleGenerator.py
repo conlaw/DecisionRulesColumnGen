@@ -33,18 +33,35 @@ class GeneralRuleGenerator(object):
    
     def generateRule(self, args = {}):
         
-        if 'lam' not in args or 'mu' not in args or 'alpha' not in args:
+        if 'lam' not in args or 'coeff' not in args:
             raise Exception('Required arguments not supplied for DNF IP Rule Generator.')
         
-        #Sample Datasets
-        X, Y, args['mu'], args['alpha'], args['row_samples'], col_samples = self.sampler.getSample(self.ruleMod.X, 
-                                                                                                   self.ruleMod.Y, 
-                                                                                                   args['mu'], args['alpha'])
-        #Generate Rules
-        rules, rcs = self.ruleGen.generateRule(X, Y, args)
+        final_rules = []
+        sampling = True
         
-        #Subsample rules to return
-        final_rules, final_rcs = self.ruleSelect.getRules(rules, rcs, col_samples)
+        if 'timeLimit' in args:
+            timeLimited = True
+            timeLimit = args['timeLimit']
+            start_time = time.perf_counter()
+
+        while (len(final_rules) == 0) and (sampling):
+        
+            #Sample Datasets
+            X, Y, args['coeff'], args['row_samples'], col_samples = self.sampler.getSample(self.ruleMod.X, 
+                                                                                                       self.ruleMod.Y, 
+                                                                                                       args['coeff'])
+            sampling = not (len(Y) == len(self.ruleMod.Y))
+            
+            #Generate Rules
+            rules, rcs = self.ruleGen.generateRule(X, Y, args)
+
+            #Subsample rules to return
+            final_rules, final_rcs = self.ruleSelect.getRules(rules, rcs, col_samples)
+            
+            if timeLimited:
+                if time.perf_counter() - start_time >= timeLimit:
+                    break
+        
 
         return len(final_rules) > 0 , final_rules
         
@@ -55,7 +72,8 @@ class GeneralRuleGenerator(object):
         Function that maps string rule models to objects
            - To add a new rule model simply add the object to the if control flow
         '''
-        
+        self.sampler_type = sampler
+                
         if sampler == 'full':
             self.sampler = notsosubSampler.NotSoSubSampler()
         elif sampler == 'random':
