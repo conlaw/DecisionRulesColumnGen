@@ -26,14 +26,14 @@ class HybridGenerator(RuleGenerator):
         '''
         Solve the IP Pricing problem to generate new rule(s)
         '''
-        if self.rule_count < 3 and self.doGreedy:
+        if self.rule_count < 4 and self.doGreedy:
             #print('Hybrid using greedy')
             rules, objs = self.greedy.generateRule(X,Y,args)
             
             if len(rules) == 0:
                 self.doGreedy = False
         
-        if self.rule_count >= 3 or not self.doGreedy:
+        if self.rule_count >= 4 or not self.doGreedy:
             #print('Hybrid using IP')
             rules, objs = self.ip.generateRule(X,Y,args) 
         
