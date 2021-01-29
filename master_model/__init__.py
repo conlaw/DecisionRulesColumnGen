@@ -1,1 +1,2 @@
-__all__ = ['CompactDoubleSidedMaster','CompactOneSidedMaster','RegularizedOneSidedMaster', 'ZeroOneMaster']
+__all__ = ['CompactDoubleSidedMaster','CompactOneSidedMaster','RegularizedOneSidedMaster', 
+           'ZeroOneMaster','ZeroOneDoubleSidedMaster']

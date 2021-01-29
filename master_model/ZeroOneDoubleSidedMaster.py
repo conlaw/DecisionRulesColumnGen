@@ -4,9 +4,11 @@ import gurobipy as gp
 from gurobipy import GRB
 import time
 
-class CompactDoubleSidedMaster(object):
+class ZeroOneDoubleSidedMaster(object):
     '''
     Object to contain and run the restricted model
+    NOTE: Not coded to handle duals, use with care
+    NOTE: ONLY FOR FAIR MODULES WITH NO WEIGHT ON NEGATIVE CLASS!!!
     '''
     
     def __init__(self, rule_mod, fairnessModule, args = {}):
@@ -50,6 +52,11 @@ class CompactDoubleSidedMaster(object):
         for k in range(sum(self.ruleModel.Y)):
             self.x.append(self.model.addVar(obj=1, vtype=GRB.BINARY, name="eps[%d]"%k))
 
+        #Initialize negative misclassification variables
+        self.y = []
+        for k in range(sum(~self.ruleModel.Y)):
+            self.y.append(self.model.addVar(obj=1, vtype=GRB.BINARY, name="eps_neg[%d]"%k))
+
         #Add positive misclassification constraints
         self.misClassConst = []
         for i in range(len(self.x)):
@@ -58,6 +65,10 @@ class CompactDoubleSidedMaster(object):
         self.misClasConstLB = []
         for i in range(len(self.x)):
             self.misClasConstLB.append(self.model.addConstr(C*self.x[i] <= C, name="MisclassConstLB[%d]"%i))
+
+        self.misClassNegConst = []
+        for i in range(len(self.y)):
+            self.misClassNegConst.append(self.model.addConstr(-C/2*self.y[i] <= 0, name="MisclassNegConst[%d]"%i))
 
         #Add complexity constraint
         self.compConst = self.model.addConstr( 0*self.x[0] <= self.complexityConstraint, name = 'compConst')
@@ -113,16 +124,13 @@ class CompactDoubleSidedMaster(object):
                     lam = c.Pi
                 elif c.ConstrName in self.fairnessModule.fairConstNames:
                     self.fairnessModule.extractDualVariables(c)
-                elif "MisclassConstLB" in c.ConstrName:
-                    alpha.append(c.Pi)
                 else:
                     mu.append(c.Pi)
             
             #duals = pd.DataFrame.from_records(duals)
             #duals.to_csv('duals.csv')
             results['mu'] = mu
-            results['alpha'] = alpha
-            results['coeff'] = list(2*np.array(alpha) - np.array(mu))
+            results['coeff'] = list(-np.array(mu))
             results['lam'] = lam
             results['fairDuals'] = self.fairnessModule.fairDuals
 
@@ -167,15 +175,15 @@ class CompactDoubleSidedMaster(object):
             newCol = gp.Column()
             newCol.addTerms(K_p[:,i] , self.misClassConst)
             newCol.addTerms(2*K_p[:,i] , self.misClasConstLB)
+            newCol.addTerms(K_z[:,i], self.misClassNegConst)
             newCol.addTerms(c[i],  self.compConst)
             FCargs['rule'] = i
             
             self.fairnessModule.updateFairnessConstraint(newCol,self.fairnessConstraints,FCargs)
             
             #Add decision variable
-            self.w[self.var_counter] = self.model.addVar(obj=K_z_coeff[i], 
-                                           vtype=GRB.INTEGER, 
-                                           lb = 0.0,
+            self.w[self.var_counter] = self.model.addVar(obj=0, 
+                                           vtype=GRB.BINARY, 
                                            name="w[%d]"%self.var_counter, 
                                            column=newCol)
             self.var_counter += 1
@@ -188,7 +196,7 @@ class CompactDoubleSidedMaster(object):
         '''
         
         # For rules generated during relaxed version, incldues all rules where w > 0
-        inclRules = [v.x > 0 for v in decisionVars[len(self.x)::]]
+        inclRules = [v.x > 0 for v in decisionVars[(len(self.x)+len(self.y))::]]
         
         # Return what we can given the current state of variables
         if len(inclRules) > 0 and self.ruleModel.rules is not None: 
@@ -219,7 +227,7 @@ class CompactDoubleSidedMaster(object):
         '''
         
         # For rules generated during relaxed version, incldues all rules where w > 0
-        inclRules = [v > 0 for v in decisionVars[len(self.x)::]]
+        inclRules = [v > 0 for v in decisionVars[(len(self.x)+len(self.y))::]]
         
         # Return what we can given the current state of variables
         if len(inclRules) > 0 and self.ruleModel.rules is not None: 

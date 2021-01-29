@@ -19,7 +19,7 @@ class Classifier(object):
                  ruleModel = 'DNF',
                  ruleGenerator = 'Generic',
                  fairness_module = 'unfair',
-                 master_model = 'regularized_oneside'):
+                 master_model = 'compact_doubleside'):
         
         #Define class variables
         self.ruleMod = None
@@ -51,6 +51,9 @@ class Classifier(object):
         if initial_rules is not None:
             print('Adding Rules')
             self.master.addRule(initial_rules)
+            if rule_filter:
+                self.filterRules()
+            
         
         if timeLimit is not None:
             start_time = time.perf_counter()
@@ -65,7 +68,7 @@ class Classifier(object):
             master_solve = time.perf_counter()
             results = self.master.solve(verbose = verbose, relax = True)
             
-            self.master.model.write('master_model.lp')
+            #self.master.model.write('master_model.lp')
             #print('Master solving took %.2f seconds'%(time.perf_counter() - master_solve))
             results['verbose'] = verbose
             self.mip_results.append(results['obj'])
@@ -118,7 +121,7 @@ class Classifier(object):
         #Return final rules
         return self
     
-    def filterSolveMIP(self, K = 1000, verbose = False):
+    def filterRules(self, K = 1000, verbose = False):
         '''
         Function to run a two-stage IP solver:
         Stage 1) Solve MIP, and compute reduced costs for all rules. Retain best K
@@ -137,14 +140,21 @@ class Classifier(object):
         
         print('Sorting RC and reset')
         start = time.perf_counter()
-        print('np.argsort(reduced_costs): ', np.argsort(reduced_costs))
+        #print('np.argsort(reduced_costs): ', np.argsort(reduced_costs))
         reduced_rule_set = self.ruleMod.rules[np.argsort(reduced_costs)[:K]]
         print('Length of reduced rule set: ', len(reduced_rule_set))
         self.reset(reduced_rule_set)
         print('Sorting RC/reset took %.2f seconds'%(time.perf_counter() - start))
 
+    def filterSolveMIP(self, K = 1000, verbose = False):
+        '''
+        Function to run a two-stage IP solver:
+        Stage 1) Solve MIP, and compute reduced costs for all rules. Retain best K
+        Stage 2) Solve IP for best K rules
+        '''
+        self.filterRules(K = K, verbose = verbose)
         print('Solving master IP')
-        self.master.model.write('filteredproblem.lp')
+        #self.master.model.write('filteredproblem.lp')
         master_solve = time.perf_counter()
         results = self.master.solve(verbose = verbose, relax = False)
         print('Master solving took %.2f seconds'%(time.perf_counter() - master_solve))
